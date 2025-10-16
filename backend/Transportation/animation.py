@@ -1,21 +1,21 @@
-import argparse
+from manim import *
+from helper_funcs import AnimationHelpers
 import json
+import copy
 import os
-import time
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--data_file", type=str, required=True)
-parser.add_argument("--output_name", type=str, required=True)
-args = parser.parse_args()
 
 class TransportationScene(Scene):
     def construct(self):
-        with open(args.data_file, "r") as f:
+        # Build a reliable path to the JSON file
+        script_dir = os.path.dirname(__file__)
+        json_path = os.path.join(script_dir, "transportation_problem.json")
+        
+        with open(json_path, "r") as f:
             data = json.load(f)
             supply = data["supply"]
             demand = data["demand"]
-            cost = data["cost"]
-        
+            costs = data["costs"]
+  
         Header = Tex("Transportation Problem\\\\Vogel's Approximation Method", font_size=48).to_edge(UP, buff=0.1)
         self.play(Write(Header))
         self.wait(0.75)
@@ -80,4 +80,4 @@ class TransportationScene(Scene):
         AnimationHelpers.animate_total_cost_calculation(
             self, table, costs, allocations
         )
-        self.wait(5)
+        self.wait(2)

@@ -58,3 +58,11 @@ parts/
 sdist/
 var/
 wheels/
+
+#videos
+
+public/
+media/
+
+# json files
+*.json

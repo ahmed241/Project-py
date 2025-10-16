@@ -1,242 +1,200 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import List, Optional
 import subprocess
-import os
 import json
-import time
+import os
+from typing import List
 import uuid
 
-app = FastAPI(title="Engineering Solver Suite API")
+app = FastAPI()
 
-# Enable CORS for your Next.js frontend
+# --- Build Absolute Paths ---
+# This makes sure that no matter where you run the server from,
+# it can always find the 'public' and 'backend' directories.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_DIR = os.path.join(BASE_DIR, "public")
+BACKEND_DIR = os.path.join(BASE_DIR)
+
+
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://your-vercel-app.vercel.app"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Store job status in memory (use Redis for production)
-jobs = {}
+# Serve video files from an absolute path
+app.mount("/videos", StaticFiles(directory=os.path.join(PUBLIC_DIR, "videos")), name="videos")
 
 # ==================== DATA MODELS ====================
-
-class EOTCraneRequest(BaseModel):
-    load_tonnes: float
-    speed_mps: float
-    lift_height: float
-
-class AssignmentRequest(BaseModel):
-    cost_matrix: List[List[float]]
-    problem_type: Optional[str] = "minimization"
-    restrictions: Optional[List[List[bool]]] = None
 
 class TransportationRequest(BaseModel):
     supply: List[float]
     demand: List[float]
-    cost: List[List[float]]
+    costs: List[List[float]]
 
-class JobResponse(BaseModel):
-    job_id: str
-    status: str
-    message: str
+class AssignmentRequest(BaseModel):
+    matrix: List[List[float]]
+    problem_type: str = "minimization"
 
-class JobStatusResponse(BaseModel):
-    job_id: str
-    status: str  # "pending", "processing", "completed", "failed"
-    video_url: Optional[str] = None
-    error: Optional[str] = None
+class EOTRequest(BaseModel):
+    load: float
+    speed: float
+    height: float
 
-# ==================== HELPER FUNCTIONS ====================
-
-def run_python_script(script_path: str, args: List[str], job_id: str):
-    """Run Python script in background"""
-    try:
-        jobs[job_id]["status"] = "processing"
-        
-        # Execute Python script
-        result = subprocess.run(
-            ["python", script_path] + args,
-            capture_output=True,
-            text=True,
-            timeout=900  # 15 minute timeout
-        )
-        
-        if result.returncode != 0:
-            jobs[job_id]["status"] = "failed"
-            jobs[job_id]["error"] = result.stderr
-            return
-        
-        # Extract filename from output
-        output_lines = result.stdout.strip().split('\n')
-        filename = output_lines[-1].strip()
-        
-        if not filename.endswith('.mp4'):
-            jobs[job_id]["status"] = "failed"
-            jobs[job_id]["error"] = "Invalid output from Python script"
-            return
-        
-        jobs[job_id]["status"] = "completed"
-        jobs[job_id]["video_url"] = f"/videos/{filename}"
-        
-    except subprocess.TimeoutExpired:
-        jobs[job_id]["status"] = "failed"
-        jobs[job_id]["error"] = "Script execution timed out"
-    except Exception as e:
-        jobs[job_id]["status"] = "failed"
-        jobs[job_id]["error"] = str(e)
-
-# ==================== API ENDPOINTS ====================
+# ==================== ENDPOINTS ====================
 
 @app.get("/")
-def read_root():
-    return {
-        "message": "Engineering Solver Suite API",
-        "version": "1.0",
-        "endpoints": ["/eot-crane", "/assignment", "/transportation"]
+def root():
+    return {"message": "Engineering Solver Backend Running"}
+
+@app.post("/api/transportation")
+def solve_transportation(request: TransportationRequest):
+    """Run transportation animation"""
+    try:
+        # Define reliable, absolute paths
+        problem_dir = os.path.join(BACKEND_DIR, "Transportation")
+        json_path = os.path.join(problem_dir, "transportation_problem.json")
+        script_path = os.path.join(problem_dir, "animation.py")
+
+        # Ensure the target directory exists before writing to it
+        os.makedirs(problem_dir, exist_ok=True)
+
+        # Save data to JSON using the reliable path
+        with open(json_path, "w") as f:
+            json.dump({
+                "supply": request.supply,
+                "demand": request.demand,
+                "costs": request.costs
+            }, f)
+
+        # --- THIS IS THE UPDATED SECTION ---
+
+        # 1. Generate a unique filename to prevent conflicts
+        video_filename = f"{uuid.uuid4()}.mp4"
+        
+        # 2. Build a robust command that tells Manim exactly where to save the video
+        command = [
+            "manim",
+            script_path,           # Your script to run
+            "-ql",                 # Render in low quality (faster)
+            "--media_dir", os.path.join(PUBLIC_DIR), # Tell Manim to use /public as the root media folder
+            "-o", video_filename,
+            "--disable_caching"  # The final name for the video file
+        ]
+
+        # 3. Run the updated command
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True
+        )
+        
+        # 4. Check for errors
+        if result.returncode != 0:
+            # Manim often outputs useful errors to stderr
+            return {"error": result.stderr}
+
+        # 5. Return the predictable URL
+        return {
+        "status": "success",
+        "video_url": f"/videos/animation/480p15/{video_filename}",
+        "message": "Animation generated successfully"
     }
 
-@app.post("/api/eot-crane", response_model=JobResponse)
-async def generate_eot_crane(request: EOTCraneRequest, background_tasks: BackgroundTasks):
-    """Generate EOT Crane design video"""
-    
-    # Generate unique job ID
-    job_id = str(uuid.uuid4())
-    
-    # Initialize job status
-    jobs[job_id] = {
-        "status": "pending",
-        "created_at": time.time()
-    }
-    
-    # Prepare script arguments
-    load_kn = request.load_tonnes * 10  # Convert to kN
-    script_path = os.path.join("EOT_Crane", "animation.py")
-    args = [
-        "--load", str(load_kn),
-        "--speed", str(request.speed_mps),
-        "--lift", str(request.lift_height)
-    ]
-    
-    # Run in background
-    background_tasks.add_task(run_python_script, script_path, args, job_id)
-    
-    return JobResponse(
-        job_id=job_id,
-        status="pending",
-        message="Video generation started"
-    )
+    except Exception as e:
+        return {"error": str(e)}
 
-@app.post("/api/assignment", response_model=JobResponse)
-async def solve_assignment(request: AssignmentRequest, background_tasks: BackgroundTasks):
-    """Solve Assignment Problem and generate video"""
-    
-    job_id = str(uuid.uuid4())
-    
-    jobs[job_id] = {
-        "status": "pending",
-        "created_at": time.time()
-    }
-    
-    # Create temporary data file
-    data_file = f"temp_data_{job_id}.json"
-    with open(data_file, "w") as f:
-        json.dump({
-            "matrix": request.cost_matrix,
-            "type": request.problem_type,
-            "restrictions": request.restrictions or []
-        }, f)
-    
-    script_path = os.path.join("Assignment", "animation.py")
-    args = [
-        "--data_file", data_file,
-        "--output_name", f"assignment_{job_id}.mp4"
-    ]
-    
-    background_tasks.add_task(run_python_script, script_path, args, job_id)
-    
-    return JobResponse(
-        job_id=job_id,
-        status="pending",
-        message="Solving assignment problem"
-    )
+@app.post("/api/assignment")
+def solve_assignment(request: AssignmentRequest):
+    """Run assignment problem animation"""
+    try:
+        # Define reliable, absolute paths
+        problem_dir = os.path.join(BACKEND_DIR, "Assignment")
+        json_path = os.path.join(problem_dir, "data.json")
+        script_path = os.path.join(problem_dir, "animation.py")
 
-@app.post("/api/transportation", response_model=JobResponse)
-async def solve_transportation(request: TransportationRequest, background_tasks: BackgroundTasks):
-    """Solve Transportation Problem and generate video"""
-    
-    job_id = str(uuid.uuid4())
-    
-    jobs[job_id] = {
-        "status": "pending",
-        "created_at": time.time()
-    }
-    
-    # Create temporary data file
-    data_file = f"temp_data_{job_id}.json"
-    with open(data_file, "w") as f:
-        json.dump({
-            "supply": request.supply,
-            "demand": request.demand,
-            "cost": request.cost
-        }, f)
-    
-    script_path = os.path.join("Transportation", "animation.py")
-    args = [
-        "--data_file", data_file,
-        "--output_name", f"transportation_{job_id}.mp4"
-    ]
-    
-    background_tasks.add_task(run_python_script, script_path, args, job_id)
-    
-    return JobResponse(
-        job_id=job_id,
-        status="pending",
-        message="Solving transportation problem"
-    )
+        # Ensure the target directory exists
+        os.makedirs(problem_dir, exist_ok=True)
 
-@app.get("/api/job/{job_id}", response_model=JobStatusResponse)
-async def get_job_status(job_id: str):
-    """Check the status of a job"""
-    
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    job = jobs[job_id]
-    
-    return JobStatusResponse(
-        job_id=job_id,
-        status=job["status"],
-        video_url=job.get("video_url"),
-        error=job.get("error")
-    )
+        with open(json_path, "w") as f:
+            json.dump({
+                "matrix": request.matrix,
+                "type": request.problem_type
+            }, f)
+            
+        # 1. Generate a unique filename to prevent conflicts
+        video_filename = f"{uuid.uuid4()}.mp4"
+        # 2. Build a robust command that tells Manim exactly where to save the video
+        command = [
+            "manim",
+            script_path,           # Your script to run
+            "-ql",                 # Render in low quality (faster)
+            "--media_dir", os.path.join(PUBLIC_DIR), # Tell Manim to use /public as the root media folder
+            "-o", video_filename, # The final name for the video file
+            "--disable_caching"  
+        ]
 
-@app.delete("/api/job/{job_id}")
-async def cancel_job(job_id: str):
-    """Cancel a job (if still pending)"""
-    
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    if jobs[job_id]["status"] == "pending":
-        jobs[job_id]["status"] = "cancelled"
-        return {"message": "Job cancelled"}
-    
-    return {"message": "Job cannot be cancelled"}
+        # 3. Run the updated command
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            return {"error": result.stderr}
 
-# ==================== HEALTH CHECK ====================
+        lines = result.stdout.strip().split('\n')
+        video_file = lines[-1].strip()
 
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "active_jobs": len([j for j in jobs.values() if j["status"] == "processing"]),
-        "total_jobs": len(jobs)
-    }
+        return {
+            "status": "success",
+            "video_url": f"public/videos/animation/480p15/{video_filename}", # We already know the URL!
+            "message": "Animation generated successfully"
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/eot-crane")
+def generate_eot(request: EOTRequest):
+    """Run EOT Crane animation"""
+    try:
+        # Define a reliable, absolute path to the script
+        script_path = os.path.join(BACKEND_DIR, "EOT_Crane", "animation.py")
+
+        # Run Python script with arguments
+        result = subprocess.run(
+            [
+                "python", script_path,
+                "--load", str(request.load),
+                "--speed", str(request.speed),
+                "--lift", str(request.height)
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+
+        if result.returncode != 0:
+            return {"error": result.stderr}
+
+        lines = result.stdout.strip().split('\n')
+        video_file = lines[-1].strip()
+
+        return {
+            "status": "success",
+            "video_url": f"/videos/{video_file}"
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=7000)

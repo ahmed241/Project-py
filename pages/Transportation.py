@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 import json
 import copy
-import subprocess
-import os
-import time
 import numpy as np
 from scipy.optimize import linprog
-from Transportation.VAM_solver import solve_vam
+from backend.Transportation.VAM_solver import solve_vam
+import requests
+
+BACKEND_URL = "http://localhost:7000"
 
 # --- Sample Data Definition ---
 SAMPLE_TRANSPORTATION_DATA = {
@@ -87,9 +87,9 @@ st.button("Load Sample Data", on_click=load_transportation_sample, help="Click t
 
 col1, col2 = st.columns(2)
 with col1:
-    num_sources = st.number_input("Number of Sources (Factories)", min_value=1, value=3, key="num_sources_input")
+    num_sources = st.number_input("Number of Sources (Factories)", min_value=1, key="num_sources_input")
 with col2:
-    num_destinations = st.number_input("Number of Destinations (Warehouses)", min_value=1, value=3, key="num_destinations_input")
+    num_destinations = st.number_input("Number of Destinations (Warehouses)", min_value=1, key="num_destinations_input")
 
 # --- Step 2: Define Supply and Demand ---
 st.subheader("2. Define Supply and Demand")
@@ -100,13 +100,13 @@ col1, col2 = st.columns(2)
 with col1:
     st.write("**Supply from Sources**")
     for i in range(num_sources):
-        supply_val = st.number_input(f"Source {chr(65 + i)} Supply", min_value=1, value=50, key=f"supply_{i}")
+        supply_val = st.number_input(f"Source {chr(65 + i)} Supply", min_value=1, key=f"supply_{i}")
         supply.append(supply_val)
 
 with col2:
     st.write("**Demand at Destinations**")
     for i in range(num_destinations):
-        demand_val = st.number_input(f"Destination {i + 1} Demand", min_value=1, value=20, key=f"demand_{i}")
+        demand_val = st.number_input(f"Destination {i + 1} Demand", min_value=1, key=f"demand_{i}")
         demand.append(demand_val)
 
 # --- Step 3: Define Cost Matrix ---
@@ -130,21 +130,49 @@ st.session_state.editable_tp_df = edited_df
 st.subheader("4. Choose Output Format")
 output_type = st.radio(
     "How would you like to see the solution?",
-    ("Final Answer Only", "Step-by-step Video Solution (VAM)"),
+    ("Final Answer Only", "Step-by-Step Video"),
     horizontal=True,
     label_visibility="collapsed"
 )
 
 # --- Step 5: Generate Solution ---
 st.subheader("5. Generate Solution")
-
 # Get cost data from our controlled state variable
 costs = st.session_state.editable_tp_df.astype(float).values.tolist()
 
-if output_type == "Step-by-step Video Solution (VAM)":
-    if st.button("🎥 Render Video", type="primary"):
-        st.info("Video rendering logic would be here.")
 
+if output_type == "Step-by-Step Video":
+        if st.button("🎬 Generate Solution", type="primary"):
+            with st.spinner("🎥 Generating animation... This may take time."):
+                try:
+                    # Call backend API
+                    response = requests.post(
+                        f"{BACKEND_URL}/api/transportation",
+                        json={
+                            "supply": supply,
+                            "demand": demand,
+                            "costs": costs
+                        }
+                    )
+                    
+                    result = response.json()
+                    
+                    if "error" in result:
+                        st.error(f"Error: {result['error']}")
+                    else:
+                        st.success("✅ Animation generated successfully!")
+                        
+                        # Display video
+                        video_url = f"{BACKEND_URL}{result['video_url']}"
+                        st.video(video_url)
+                        # Download link
+                        st.markdown(f"[📥 Download Video]({video_url})")
+                                        
+                except requests.exceptions.Timeout:
+                    st.error("⏰ Request timed out. The animation is taking too long.")
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+    
 else: # "Final Answer Only" was selected
     if st.button("🧮 Calculate Final Answer", type="primary"):
         with st.spinner("Calculating solutions..."):
@@ -172,7 +200,7 @@ else: # "Final Answer Only" was selected
                 st.error(f"An error occurred during VAM calculation: {e}")
 
             st.markdown("---")
-            st.subheader("2. Final Optimal Solution (using Linear Programming)")
+            st.subheader("2. Final Optimal Solution Using Modified Distribution Method (MODI Method)")
             
             costs_flat = np.array(final_costs).flatten()
             A_eq = []

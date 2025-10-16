@@ -1,12 +1,10 @@
 import streamlit as st
 import pandas as pd
-import json
-import subprocess
-import os
-import time
+import requests
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+BACKEND_URL = "http://localhost:7000"
 # --- Sample Data Definition ---
 SAMPLE_ASSIGNMENT_DATA = {
     "rows": 4,
@@ -116,11 +114,35 @@ st.header("5. Generate Solution")
 matrix_values = st.session_state.editable_df.astype(float).values.tolist()
 
 if output_type == "Step-by-step Video Solution":
-    VENV_PYTHON_PATH = ".venv\\Scripts\\python.exe"
     if st.button("Render Video"):
-        # (Video rendering code remains the same, it will correctly use matrix_values)
-        st.info("Video rendering logic would go here.")
-
+        with st.spinner("🎥 Generating animation... This may take time."):
+                try:
+                    # Call backend API
+                    response = requests.post(
+                        f"{BACKEND_URL}/api/assignment",
+                        json={
+                            "matrix": matrix_values,
+                            "problem_type": problem_type
+                        }
+                    )
+                    
+                    result = response.json()
+                    
+                    if "error" in result:
+                        st.error(f"Error: {result['error']}")
+                    else:
+                        st.success("✅ Animation generated successfully!")
+                        
+                        # Display video
+                        video_url = f"{BACKEND_URL}{result['video_url']}"
+                        st.video(video_url)
+                        # Download link
+                        st.markdown(f"[📥 Download Video]({video_url})")
+                
+                except requests.exceptions.Timeout:
+                    st.error("⏰ Request timed out. The animation is taking too long.")
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
 
 else: # The "Final Answer Only" option was selected
     if st.button("Calculate Final Answer"):

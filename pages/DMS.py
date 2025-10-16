@@ -280,8 +280,6 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("🔧 Solvers Planned", "6", delta="Coming Soon")
 with col2:
-    st.metric("📐 Design Standards", "AGMA/ANSI/ISO", delta=None)
-with col3:
     st.metric("🎬 Visualization", "3D Models", delta="Planned")
 
 # Roadmap
@@ -314,7 +312,7 @@ st.markdown("---")
 st.markdown("""
     <div style="text-align: center; padding: 2rem 0; color: #666;">
         <p style="font-size: 1rem;">
-            💡 <strong>Tip:</strong> These tools will integrate with CAD software for seamless workflow
+            💡 <strong>Tip:</strong> These tools will integrate with Image input for seamless Experience
         </p>
         <p style="font-size: 0.9rem; margin-top: 1rem;">
             Stay tuned for updates!

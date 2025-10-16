@@ -1,6 +1,5 @@
 import json
 from manim import *
-import argparse
 import os
 import time
 
@@ -10,25 +9,19 @@ from line_finder import solve_lines
 
 # --- START: MODIFICATIONS FOR API INTEGRATION ---
 
-# 1. Setup argument parser to receive file paths from Node.js
-parser = argparse.ArgumentParser(description="Generate Manim animation for Assignment Problem.")
-parser.add_argument("--data_file", type=str, required=True, help="Path to the input JSON data file.")
-parser.add_argument("--output_name", type=str, required=True, help="The desired name for the output mp4 file.")
-args = parser.parse_args()
-
 
 class MyScene(Scene):
     def construct(self):
         # self.next_section(skip_animations=True)
         # Load the data from the file path provided via arguments
         try:
-            # Use the data_file argument instead of a hardcoded path
-            with open("data.json", "r") as f:
+            script_dir = os.path.dirname(__file__)
+            json_path = os.path.join(script_dir, "assignment_problem.json")
+            with open(json_path, "r") as f:
                 saved_data = json.load(f)
                 table_data = saved_data["matrix"]
                 question_data = saved_data["matrix"]
                 problem_type = saved_data.get("type", "minimization")
-                restrictions = saved_data.get("restrictions", [])
         except (FileNotFoundError, KeyError) as e:
             # This default data is now just a fallback for direct execution
             print(f"Could not load : {e}. Using default matrix.")
