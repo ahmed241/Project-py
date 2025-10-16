@@ -1,0 +1,16 @@
+
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Manim output folder
+media/
+
+# Data files
+data.json
+data_for_ruby.json
+
+# VS Code & other editor settings
+.vscode/
+.idea/
