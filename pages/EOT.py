@@ -4,7 +4,7 @@ import pprint
 from backend.EOT_Crane import EOT_solver
 import requests
 
-BACKEND_URL = "http://localhost:7000"
+BACKEND_URL = "https://project-py-3q8o.onrender.com"
 
 # Page configuration
 st.set_page_config(page_title="EOT Crane Design", page_icon="🏗️")

@@ -7,7 +7,7 @@ from scipy.optimize import linprog
 from backend.Transportation.VAM_solver import solve_vam
 import requests
 
-BACKEND_URL = "http://localhost:7000"
+BACKEND_URL = "https://project-py-3q8o.onrender.com"
 
 # --- Sample Data Definition ---
 SAMPLE_TRANSPORTATION_DATA = {

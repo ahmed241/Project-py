@@ -4,7 +4,7 @@ import requests
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-BACKEND_URL = "http://localhost:7000"
+BACKEND_URL = "https://project-py-3q8o.onrender.com"
 # --- Sample Data Definition ---
 SAMPLE_ASSIGNMENT_DATA = {
     "rows": 4,
