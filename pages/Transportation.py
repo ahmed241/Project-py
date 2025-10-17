@@ -149,7 +149,7 @@ if output_type == "Step-by-Step Video":
             # 1. START THE JOB
             # This request returns almost instantly with a job_id
             response = requests.post(
-                f"{BACKEND_URL}/api/start-transportation-animation", # Use the new endpoint
+                f"{BACKEND_URL}/api/transportation", # Use the new endpoint
                 json={"supply": supply, "demand": demand, "costs": costs}
             )
             response.raise_for_status()

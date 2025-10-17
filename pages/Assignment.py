@@ -114,7 +114,7 @@ st.header("5. Generate Solution")
 # Get the matrix from our "source of truth" state variable
 matrix_values = st.session_state.editable_df.astype(float).values.tolist()
 
-if output_type == "Step-by-Step Video":
+if output_type == "Step-by-Step Video Solution":
     if st.button("🎬 Generate Solution Video", type="primary"):
         # This is the data payload to send to the backend.
         request_data = {
@@ -128,7 +128,7 @@ if output_type == "Step-by-Step Video":
             # This request uses the new 'start' endpoint and returns instantly.
             st.info("🚀 Sending request to the server...")
             response = requests.post(
-                f"{BACKEND_URL}/api/start-assignment-animation",
+                f"{BACKEND_URL}/api/assignment",
                 json=request_data
             )
             response.raise_for_status() # Raises an error for bad status codes (like 404 or 500)

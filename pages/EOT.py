@@ -87,7 +87,7 @@ if output_type == "Step-by-Step Video Solution":
             # Call the new 'start' endpoint. This request is fast and returns immediately.
             st.info("🚀 Sending request to the server...")
             response = requests.post(
-                f"{BACKEND_URL}/api/start-eot-crane-animation",
+                f"{BACKEND_URL}/api/eot_crane",
                 json=request_data
             )
             response.raise_for_status() # Check for HTTP errors like 404 or 500
