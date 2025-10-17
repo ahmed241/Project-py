@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import numpy as np
+import time
 from scipy.optimize import linear_sum_assignment
 
 BACKEND_URL = "https://project-py-3q8o.onrender.com"
@@ -37,8 +38,8 @@ def load_assignment_sample():
 
 # --- App UI ---
 # Back to main button
-if st.button("⬅️ Back to Main Menu", use_container_width=False):
-    st.switch_page("home.py")
+if st.button("⬅️ Back", use_container_width=False):
+    st.switch_page("pages/OR.py")
 st.title("Hungarian Algorithm Visualizer")
 
 # --- Step 1: Define Matrix Dimensions ---
@@ -113,37 +114,81 @@ st.header("5. Generate Solution")
 # Get the matrix from our "source of truth" state variable
 matrix_values = st.session_state.editable_df.astype(float).values.tolist()
 
-if output_type == "Step-by-step Video Solution":
-    if st.button("Render Video", type="primary"):
-        with st.spinner("🎥 Generating animation... This may take time."):
-                try:
-                    # Call backend API
-                    response = requests.post(
-                        f"{BACKEND_URL}/api/assignment",
-                        json={
-                            "matrix": matrix_values,
-                            "problem_type": problem_type
-                        }
-                    )
+if output_type == "Step-by-Step Video":
+    if st.button("🎬 Generate Solution Video", type="primary"):
+        # This is the data payload to send to the backend.
+        request_data = {
+            "matrix": matrix_values,  # 'costs' is the variable from your st.data_editor
+            "problem_type": problem_type.lower() # e.g., "minimization"
+        }
+        
+        job_id = None
+        try:
+            # --- Step 1: Start the Job ---
+            # This request uses the new 'start' endpoint and returns instantly.
+            st.info("🚀 Sending request to the server...")
+            response = requests.post(
+                f"{BACKEND_URL}/api/start-assignment-animation",
+                json=request_data
+            )
+            response.raise_for_status() # Raises an error for bad status codes (like 404 or 500)
+            
+            job_id = response.json().get("job_id")
+            if not job_id:
+                st.error("Backend did not return a job ID. Cannot check status.")
+                st.stop()
+
+        except Exception as e:
+            st.error(f"❌ Failed to start the animation job: {e}")
+            st.stop()
+
+        # --- Step 2: Poll for Status ---
+        st.success(f"✅ Job started successfully (ID: {job_id}). Rendering video in the background...")
+        
+        # Initialize the progress bar
+        progress_bar = st.progress(0, text="Waiting for render to begin...")
+
+        while True:
+            try:
+                # Check the job status using the job_id
+                status_response = requests.get(f"{BACKEND_URL}/api/status/{job_id}")
+                status_data = status_response.json()
+                status = status_data.get("status")
+
+                if status == "completed":
+                    progress_bar.progress(100, text="Render Complete!")
+                    st.success("✅ Animation generated successfully!")
                     
-                    result = response.json()
-                    
-                    if "error" in result:
-                        st.error(f"Error: {result['error']}")
-                    else:
-                        st.success("✅ Animation generated successfully!")
-                        
-                        # Display video
-                        video_url = f"{BACKEND_URL}{result['video_url']}"
-                        st.success(f"Video at {video_url}")
-                        st.video(video_url)
-                        # Download link
-                        st.markdown(f"[📥 Download Video]({video_url})")
+                    # Construct the full URL and display the video
+                    video_url = f"{BACKEND_URL}{status_data['video_url']}"
+                    st.video(video_url)
+                    st.markdown(f"[📥 Download Video]({video_url})")
+                    break # Exit the polling loop
+
+                elif status == "failed":
+                    st.error("❌ Animation generation failed on the server.")
+                    # Display the detailed error message from Manim
+                    error_details = status_data.get('error', 'No error details available.')
+                    st.text_area("Server Error Log:", error_details, height=250)
+                    progress_bar.empty() # Remove the progress bar on failure
+                    break # Exit the loop
+
+                elif status == "running":
+                    # Update the progress bar to show activity
+                    current_progress = progress_bar.value
+                    if current_progress < 95:
+                        progress_bar.progress(current_progress + 3, text="Rendering in progress... please wait.")
                 
-                except requests.exceptions.Timeout:
-                    st.error("⏰ Request timed out. The animation is taking too long.")
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
+                else: # Handle unexpected statuses
+                    st.error(f"Received an unknown status from the server: '{status}'")
+                    break
+
+                # Wait for 3 seconds before polling again to avoid spamming the server
+                time.sleep(3)
+
+            except Exception as e:
+                st.error(f"An error occurred while checking the job status: {e}")
+                break
 
 else: # The "Final Answer Only" option was selected
     if st.button("Calculate Final Answer", type="primary"):

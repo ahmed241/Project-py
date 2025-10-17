@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
-import json
+import time
 import copy
 import numpy as np
 from scipy.optimize import linprog
 from backend.Transportation.VAM_solver import solve_vam
 import requests
+import json
 
 BACKEND_URL = "https://project-py-3q8o.onrender.com"
 
@@ -76,8 +77,8 @@ def balance_problem(supply, demand, costs):
 # --- Streamlit App Layout ---
 st.set_page_config(layout="wide")
 # Back to main button
-if st.button("⬅️ Back to Main Menu", use_container_width=False):
-    st.switch_page("pages/Home.py")
+if st.button("⬅️ Back", use_container_width=False):
+    st.switch_page("pages/OR.py")
 st.title("🚚 Transportation Problem Solver")
 st.write("Define costs, supply, and demand to find the optimal solution.")
 
@@ -142,36 +143,67 @@ costs = st.session_state.editable_tp_df.astype(float).values.tolist()
 
 
 if output_type == "Step-by-Step Video":
-        if st.button("🎬 Generate Solution", type="primary"):
-            with st.spinner("🎥 Generating animation... This may take time."):
-                try:
-                    # Call backend API
-                    response = requests.post(
-                        f"{BACKEND_URL}/api/transportation",
-                        json={
-                            "supply": supply,
-                            "demand": demand,
-                            "costs": costs
-                        }
-                    )
-                    
-                    result = response.json()
-                    
-                    if "error" in result:
-                        st.error(f"Error: {result['error']}")
-                    else:
-                        st.success("✅ Animation generated successfully!")
-                        
-                        # Display video
-                        video_url = f"{BACKEND_URL}{result['video_url']}"
-                        st.video(video_url)
-                        # Download link
-                        st.markdown(f"[📥 Download Video]({video_url})")
-                                        
-                except requests.exceptions.Timeout:
-                    st.error("⏰ Request timed out. The animation is taking too long.")
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
+    if st.button("🎬 Generate Solution", type="primary"):
+        job_id = None
+        try:
+            # 1. START THE JOB
+            # This request returns almost instantly with a job_id
+            response = requests.post(
+                f"{BACKEND_URL}/api/start-transportation-animation", # Use the new endpoint
+                json={"supply": supply, "demand": demand, "costs": costs}
+            )
+            response.raise_for_status()
+            job_id = response.json().get("job_id")
+            if not job_id:
+                st.error("Backend did not return a job ID.")
+                st.stop()
+
+        except Exception as e:
+            st.error(f"❌ Failed to start the animation job: {e}")
+            st.stop()
+
+        # 2. POLL FOR STATUS
+        st.info("✅ Job started! Rendering video in the background. This may take a few minutes...")
+        
+        progress_text = "Processing... please wait."
+        my_bar = st.progress(0, text=progress_text)
+
+        while True:
+            try:
+                status_response = requests.get(f"{BACKEND_URL}/api/status/{job_id}")
+                status_data = status_response.json()
+                status = status_data.get("status")
+
+                if status == "completed":
+                    my_bar.progress(100, text="Render Complete!")
+                    st.success("✅ Animation generated successfully!")
+                    video_url = f"{BACKEND_URL}{status_data['video_url']}"
+                    st.video(video_url)
+                    st.markdown(f"[📥 Download Video]({video_url})")
+                    break # Exit the loop
+
+                elif status == "failed":
+                    st.error("❌ Animation generation failed.")
+                    st.text_area("Error Details", status_data.get('error', 'No details available.'), height=200)
+                    my_bar.empty()
+                    break # Exit the loop
+
+                elif status == "running":
+                    # You can make the progress bar slowly fill to show activity
+                    current_progress = my_bar.value
+                    if current_progress < 90:
+                        my_bar.progress(current_progress + 2, text=progress_text)
+
+                else:
+                    st.error(f"Unknown status received: {status}")
+                    break
+
+                # Wait before checking again
+                time.sleep(3)
+
+            except Exception as e:
+                st.error(f"An error occurred while checking status: {e}")
+                break
     
 else: # "Final Answer Only" was selected
     if st.button("🧮 Calculate Final Answer", type="primary"):
