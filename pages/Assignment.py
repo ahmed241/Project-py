@@ -103,7 +103,7 @@ with st.expander("Confirm Your Current Matrix"):
 st.header("4. Choose Output Format")
 output_type = st.radio(
     "How would you like to see the solution?",
-    ("Final Answer Only", "Step-by-step Video Solution"),
+    ("Final Answer Only", "Step-by-Step Video Solution"),
     horizontal=True,
     label_visibility="collapsed"
 )

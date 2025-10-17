@@ -21,9 +21,21 @@ PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 BACKEND_DIR = os.path.join(BASE_DIR, "backend")
 
 # --- CORS Middleware to allow frontend access ---
+origins = [
+    # The URL of your deployed Streamlit application
+    "https://project-py-3q8o.onrender.com",
+    
+    # The URL for local testing of your Streamlit app
+    "http://localhost:8501",
+]
+
+# Enable CORS with the specific origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    allow_origins=origins, # Use the specific list instead of the wildcard "*"
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Static File Serving for Videos ---
