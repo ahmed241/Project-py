@@ -2,6 +2,7 @@ import json
 from manim import *
 import os
 import time
+import pkg_resources
 
 # import helper functions and solver function
 from helper_funcs import AnimationHelpers
@@ -30,10 +31,6 @@ class MyScene(Scene):
             problem_type = "minimization"
             restrictions = []
 
-        # ... (THE REST OF YOUR construct METHOD REMAINS EXACTLY THE SAME) ...
-        # ... from "current_step = 0" all the way to the end ...
-        # ...
-        current_step = 0
         square_or_not = len(table_data) == len(table_data[0])
         total_steps = 5  # Base steps: header, square check, row reduction, column reduction, final assignment
         if problem_type == "maximization":
@@ -46,7 +43,6 @@ class MyScene(Scene):
         self.play(Write(Header))
         self.wait(0.75)
         self.play(Header.animate.to_edge(UP).scale(0.75))
-        current_step += 1 # step 1 
         table = AnimationHelpers.create_and_show_table(self, table_data, restrictions)
         question_table = table.copy()
         self.wait(1)
@@ -58,7 +54,6 @@ class MyScene(Scene):
             self.play(Write(step_one_a))
             self.wait(1)
             self.play(step_one_a.animate.scale(0.75))
-            current_step += 1 # step 2
              
             new_data, new_table = AnimationHelpers.animate_maximization_transform(self, table, table_data)
             table_data = new_data  # Update the table data to the new minimization data
@@ -71,7 +66,6 @@ class MyScene(Scene):
         self.play(Write(step_one))
         self.wait(1)
         self.play(step_one.animate.scale(0.75))
-        current_step += 1 # step 3
          
         is_square = AnimationHelpers.animate_square_check(self, table)
         self.wait(1)
@@ -83,7 +77,6 @@ class MyScene(Scene):
             self.play(Write(step_one_b))
             self.wait(1)
             self.play(step_one_b.animate.scale(0.75))
-            current_step += 1  # step 4
              
             new_data, new_table = AnimationHelpers.animate_add_dummies(self, table, table_data)
             table_data = new_data  # Update the table data to the new balanced data
@@ -99,9 +92,8 @@ class MyScene(Scene):
         self.play(Write(explain_row_reduction))
         self.wait(0.5)
         self.play(explain_row_reduction.animate.scale(0.75))
+
         # Call the new row reduction function
-        current_step += 1 # step 5
-         
         new_data, new_table = AnimationHelpers.animate_row_reduction(self, table, table_data, restrictions)
         
         # Update the main variables to the new state
@@ -128,8 +120,6 @@ class MyScene(Scene):
         self.wait(0.5)
 
         # Call the new column reduction function
-        current_step += 1
-         
         new_data, new_table = AnimationHelpers.animate_column_reduction(self, table, table_data, restrictions)
         
         # Update the main variables to the new state
@@ -157,9 +147,8 @@ class MyScene(Scene):
             rows_to_cover, cols_to_cover = solve_lines(table_data)
             num_lines = len(rows_to_cover) + len(cols_to_cover)
             print(f"DEBUG: Found {num_lines} lines to cover all zeros.")
+
             # 2. Animate drawing the lines
-            current_step += 1
-             
             lines_mobject = AnimationHelpers.animate_line_drawing(
                 self, table, rows_to_cover, cols_to_cover
             )
@@ -186,7 +175,6 @@ class MyScene(Scene):
                 self.play(FadeOut(not_optimal_text), FadeOut(step_four))
                 
                 print("DEBUG: Adjusted the matrix for the next iteration. ", table_data)
-                current_step += 1
                  
                 # Call the adjustment function to get the new data and table
                 new_data, new_table = AnimationHelpers.animate_matrix_adjustment(
@@ -202,39 +190,10 @@ class MyScene(Scene):
         step_five = Tex("Step 5: Select Optimal Assignment").scale(0.7).to_edge(UP, buff=0.5)
         self.play(Write(step_five))
         self.wait(1)
-        current_step += 1
-         
+        
         final_assignments, final_circles= AnimationHelpers.animate_final_assignment(self, table, table_data, step_five, restrictions)
         
         self.wait(2)
         AnimationHelpers.animate_assignment_summary(
             self, question_table, question_data, final_assignments, final_circles
         )
-
-if __name__ == "__main__":
-    # Generate a unique filename to avoid conflicts
-    timestamp = int(time.time())
-    file_name = f"assignment_{timestamp}.mp4"
-    
-    # IMPORTANT: Set the output directory to the public folder
-    # Get the project root (where this script is run from)
-    project_root = os.getcwd()
-    output_dir = os.path.join(project_root, "public", "videos")
-    
-    # Ensure the directory exists
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Configure Manim
-    config.media_dir = output_dir
-    config.output_file = file_name
-    config.quality = "low_quality"  # Options: low_quality, medium_quality, high_quality
-    config.preview = False  # Don't open preview window
-    config.disable_caching = True
-    
-    # This renders the scene
-    scene = MyScene()
-    scene.render()
-    
-    # IMPORTANT: Print ONLY the filename to stdout (this is read by Node.js)
-    # Make sure this is the last print statement
-    print(file_name, flush=True)

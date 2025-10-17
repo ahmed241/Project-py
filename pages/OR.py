@@ -183,20 +183,6 @@ with col2:
         **VAM Method:** Vogel's Approximation Method provides near-optimal solutions quickly and handles unbalanced problems efficiently.
         """)
 
-with col3:
-    with st.expander("📖 What is the Simplex Method?"):
-        st.markdown("""
-        The **Simplex Method** is an algorithm for solving linear programming problems by finding the optimal value of the objective function subject to linear constraints.
-        
-        **Common Applications:**
-        - Production planning
-        - Portfolio optimization
-        - Diet problems
-        - Manufacturing optimization
-        
-        **Simplex Algorithm:** Iteratively moves along edges of the feasible region to find the optimal solution at a vertex.
-        """)
-
 # Additional info
 st.markdown("---")
 st.info("💡 **Tip:** All three solvers generate animated videos showing the step-by-step solution process using Manim!")

@@ -4,16 +4,16 @@ import streamlit as st
 st.set_page_config(
     page_title="Engineering Problem Solver",
     page_icon="🎓",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
+
 # Custom CSS for landing page
 st.markdown("""
     <style>
     .main-hero {
         text-align: center;
         padding: 4rem 2rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        background: linear-gradient(135deg, #667fea 0%, #764ba2 50%, #f093fb 100%);
         color: white;
         border-radius: 15px;
         margin-bottom: 3rem;

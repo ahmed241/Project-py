@@ -1,25 +1,23 @@
 import os
 import time
-import argparse
-import sys
+import json
 from manim import *
 from helper_funcs import AnimationHelpers 
 from PSG_data_EOT import *
-
-# --- 1. Accept Command-Line Arguments ---
-parser = argparse.ArgumentParser(description="Generate EOT Crane Design Animation.")
-parser.add_argument("--load", type=float, required=True, help="Load in kN")
-parser.add_argument("--speed", type=float, required=True, help="Hoisting speed in m/s")
-parser.add_argument("--lift", type=float, required=True, help="Lift height in meters")
-
-args = parser.parse_args()
-
 
 class DesignScene(Scene):
     """
     A scene to animate the design and calculation steps for the EOT crane.
     """
     def construct(self):
+        script_dir = os.path.dirname(__file__)
+        json_path = os.path.join(script_dir, "data.json")
+        with open(json_path, "r") as f:
+            saved_data = json.load(f)
+            load_value = saved_data["load"]
+            speed = saved_data["speed"]
+            lift_height = saved_data["lift"]
+
         # Instantiate our helper class
         Title = Tex("Design Of EOT Crane", font_size=48)
         self.play(Write(Title))
@@ -32,9 +30,9 @@ class DesignScene(Scene):
         self.play(Write(title1))
 
         # --- Section 1: Rope Design ---
-        breaking_load_tonnes = AnimationHelpers.animate_rope_design(self, args.load, title1)
+        breaking_load_tonnes = AnimationHelpers.animate_rope_design(self, load_value, title1)
         self.wait(2)
-        self.next_section(skip_animations=True)
+        # self.next_section(skip_animations=True)
         # --- Section 2: Rope Selection ---
         selected_rope_dia, selected_load = AnimationHelpers.animate_rope_selection_from_table(
             self, breaking_load_tonnes, psg_data_ropedia, title1
@@ -48,30 +46,3 @@ class DesignScene(Scene):
         )
         self.wait(1)
 
-
-if __name__ == "__main__":
-    # Generate a unique filename to avoid conflicts
-    timestamp = int(time.time())
-    file_name = f"eot_crane_{timestamp}.mp4"
-    
-    # IMPORTANT: Set the output directory to the public folder
-    # Get the project root (where this script is run from)
-    project_root = os.getcwd()
-    output_dir = os.path.join(project_root, "public", "videos")
-    
-    # Ensure the directory exists
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Configure Manim
-    config.media_dir = output_dir
-    config.output_file = file_name
-    config.quality = "high_quality"  # Options: low_quality, medium_quality, high_quality
-    config.preview = False  # Don't open preview window
-    
-    # This renders the scene
-    scene = DesignScene()
-    scene.render()
-    
-    # IMPORTANT: Print ONLY the filename to stdout (this is read by Node.js)
-    # Make sure this is the last print statement
-    print(file_name, flush=True)

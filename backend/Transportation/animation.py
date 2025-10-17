@@ -3,6 +3,7 @@ from helper_funcs import AnimationHelpers
 import json
 import copy
 import os
+import pkg_resources
 
 class TransportationScene(Scene):
     def construct(self):

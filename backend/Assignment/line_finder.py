@@ -10,12 +10,12 @@ def solve_lines(grid):
     4. Formats the output for the Manim animation.
     """
     # 1. Save the current matrix data for the Ruby script to read
-    with open("E:/manimations/Project/Assignment/data_for_ruby.json", "w") as f:
+    with open("backend/Assignment/data_for_ruby.json", "w") as f:
         json.dump(grid, f)
         
     try:
         # 2. Run the Ruby script. This requires 'ruby' to be in your system's PATH.
-        command = ["ruby", "E:/manimations/Project/Assignment/line_finder.rb"]
+        command = ["ruby", "backend/Assignment/line_finder.rb"]
         result = subprocess.run(
             command, 
             capture_output=True, 

@@ -1,5 +1,6 @@
 from manim import *
 import copy
+import pkg_resources
 
 class AnimationHelpers:
     """
@@ -288,7 +289,7 @@ class AnimationHelpers:
             if j in satisfied_cols:
                 # Skip satisfied columns
                 penalty_text = Tex("-", color=GRAY).scale(0.75)
-                penalty_text.next_to(col_penalty_positions[j], RIGHT, buff=0.2)
+                penalty_text.next_to(col_penalty_positions[j], RIGHT, buff=0.25).shift(UP*0.2)
                 self.play(Write(penalty_text), run_time=0.2)
                 penalty_values.append((-1, j, 'col'))  # -1 indicates satisfied
                 penalty_texts.append(penalty_text)
@@ -301,7 +302,7 @@ class AnimationHelpers:
                 # Only one valid cost - use it as penalty
                 penalty = col_costs[0]
                 penalty_text = Integer(penalty, color=YELLOW).scale(0.75)
-                penalty_text.next_to(col_penalty_positions[j], RIGHT, buff=0.2)
+                penalty_text.next_to(col_penalty_positions[j], RIGHT, buff=0.25).shift(UP*0.2)
                 self.play(Write(penalty_text), run_time=0.2)
                 penalty_values.append((penalty, j, 'col'))
                 penalty_texts.append(penalty_text)
@@ -594,7 +595,7 @@ class AnimationHelpers:
             if st == 1: # First item
                  line_text = Tex(f" ({quantity}", r" units \\times ", f"{cost})", font_size=24)
 
-            line_text.next_to(calc_lines, DOWN, buff=0.15).align_to(calc_lines, LEFT)
+            line_text.to_edge(RIGHT, buff=0.75)
             
             self.play(Write(line_text))
             calc_lines.add(line_text)

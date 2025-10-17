@@ -38,7 +38,7 @@ def load_assignment_sample():
 # --- App UI ---
 # Back to main button
 if st.button("⬅️ Back to Main Menu", use_container_width=False):
-    st.switch_page("pages/Home.py")
+    st.switch_page("home.py")
 st.title("Hungarian Algorithm Visualizer")
 
 # --- Step 1: Define Matrix Dimensions ---
@@ -52,14 +52,14 @@ matrix_type = st.radio(
 )
 
 if matrix_type == "Square":
-    n = st.number_input("Dimension (n x n):", min_value=2, max_value=10, value=4, step=1, key="n_dim_input")
+    n = st.number_input("Dimension (n x n):", min_value=2, max_value=5, step=1, key="n_dim_input")
     rows, cols = n, n
 else: # Rectangular
     col1, col2 = st.columns(2)
     with col1:
-        rows = st.number_input("Number of Rows:", min_value=2, max_value=10, value=4, step=1, key="num_rows_input")
+        rows = st.number_input("Number of Rows:", min_value=2, max_value=6, step=1, key="num_rows_input")
     with col2:
-        cols = st.number_input("Number of Columns:", min_value=2, max_value=10, value=4, step=1, key="num_cols_input")
+        cols = st.number_input("Number of Columns:", min_value=2, max_value=6, step=1, key="num_cols_input")
 
 # --- Step 2: Problem Type Selection ---
 st.header("2. Select Problem Type")
@@ -114,7 +114,7 @@ st.header("5. Generate Solution")
 matrix_values = st.session_state.editable_df.astype(float).values.tolist()
 
 if output_type == "Step-by-step Video Solution":
-    if st.button("Render Video"):
+    if st.button("Render Video", type="primary"):
         with st.spinner("🎥 Generating animation... This may take time."):
                 try:
                     # Call backend API
@@ -135,6 +135,7 @@ if output_type == "Step-by-step Video Solution":
                         
                         # Display video
                         video_url = f"{BACKEND_URL}{result['video_url']}"
+                        st.success(f"Video at {video_url}")
                         st.video(video_url)
                         # Download link
                         st.markdown(f"[📥 Download Video]({video_url})")
@@ -145,7 +146,7 @@ if output_type == "Step-by-step Video Solution":
                     st.error(f"❌ Error: {str(e)}")
 
 else: # The "Final Answer Only" option was selected
-    if st.button("Calculate Final Answer"):
+    if st.button("Calculate Final Answer", type="primary"):
         try:
             original_matrix = np.array(matrix_values, dtype=float)
             cost_matrix = original_matrix.copy()

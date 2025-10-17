@@ -205,7 +205,7 @@ class AnimationHelpers:
         processed_table = table
         if len(data[0]) > 4:
             self.play(original_table.animate.scale(0.5))
-            self.play(processed_table.animate.scale(0.5))
+            self.play(processed_table.animate.scale(0.85))
         else:
             self.play(
                 original_table.animate.scale(0.8),
@@ -519,7 +519,7 @@ class AnimationHelpers:
                 
                 found_row = Tex(f"Found a unique zero at row {r_assign+1}").scale(0.7).next_to(new_text, DOWN, buff=0.25)
                 cell = table.get_cell((r_assign + 2, c_assign + 2))
-                circle = Circle(color=GREEN, stroke_width=3).surround(cell, buffer_factor=-0.15)
+                circle = Circle(color=GREEN, stroke_width=3).surround(cell).scale(0.5)
                 self.play(Write(found_row))
                 self.wait(0.5)
                 self.play(Create(circle))
@@ -562,7 +562,7 @@ class AnimationHelpers:
                 self.play(Write(found_col))
                 self.wait(0.5)
                 cell = table.get_cell((r_assign + 2, c_assign + 2))
-                circle = Circle(color=GREEN, stroke_width=3).surround(cell, buffer_factor=-0.15)
+                circle = Circle(color=GREEN, stroke_width=3).surround(cell).scale(0.5)
                 self.play(Create(circle))
                 
                 assignments.append((r_assign, c_assign))
@@ -600,7 +600,7 @@ class AnimationHelpers:
             for r_assign, c_assign in sorted(list(available_zeros)):
                 if r_assign not in assigned_rows and c_assign not in assigned_cols:
                     cell = table.get_cell((r_assign + 2, c_assign + 2))
-                    circle = Circle(color=GREEN, stroke_width=3).surround(cell, buffer_factor=-0.15)
+                    circle = Circle(color=GREEN, stroke_width=3).surround(cell).scale(0.5)
                     self.play(Create(circle))
                     assignments.append((r_assign, c_assign))
                     assigned_rows.add(r_assign)

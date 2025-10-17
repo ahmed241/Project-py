@@ -1,5 +1,3 @@
-# helper_funcs.py
-
 from manim import *
 
 class AnimationHelpers:

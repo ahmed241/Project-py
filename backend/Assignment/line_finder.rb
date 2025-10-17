@@ -114,7 +114,7 @@ end
 
 # --- MAIN SCRIPT LOGIC ---
 # 1. Read the matrix from the file saved by Python
-input_file = File.read('E:/manimations/Project/Assignment/data_for_ruby.json')
+input_file = File.read('backend/Assignment/data_for_ruby.json')
 grid = JSON.parse(input_file)
 
 # 2. Run your solver

@@ -1,7 +1,10 @@
 import streamlit as st
 import json
 import pprint
-from EOT_Crane import EOT_solver
+from backend.EOT_Crane import EOT_solver
+import requests
+
+BACKEND_URL = "http://localhost:7000"
 
 # Page configuration
 st.set_page_config(page_title="EOT Crane Design", page_icon="🏗️")
@@ -43,7 +46,7 @@ st.markdown("---")
 st.header("2. Choose Output Format")
 output_type = st.radio(
     "How would you like to see the solution?",
-    ("Final Answer Only", "Step-by-step Video Solution"),
+    ("Final Answer Only", "Step-by-Step Video Solution"),
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -66,54 +69,139 @@ else: # 'm/s'
     speed_in_mps = speed_value
 
 # Create a dictionary of the input data
-input_data = {
-"load_value": load_in_tonnes,
-"speed_value": speed_in_mps,
-"lift_height": lift_height
-}
+if output_type == "Step-by-Step Video Solution":
+    if st.button("Render Video", type="primary"):
+        # First, save the raw data to a JSON file
+        with st.spinner("⚙️ Working on the Video"):
+            try:
+                # Call backend API
+                response = requests.post(
+                    f"{BACKEND_URL}/api/eot-crane",
+                    json={
+                        "load": load_in_tonnes,
+                        "speed": speed_in_mps,
+                        "lift": lift_height
+                        }
+                )
+                result = response.json()
+                
+                if "error" in result:
+                    st.error(f"Error: {result['error']}")
+                else:
+                    st.success("✅ Animation generated successfully!")
+                    
+                    # Display video
+                    video_url = f"{BACKEND_URL}{result['video_url']}"
+                    st.video(video_url)
+                    # Download link
+                    st.markdown(f"[📥 Download Video]({video_url})")
+                
+            except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+
+            # --- Unit Conversion & Calculation Logic ---
+            st.subheader("Standardized Design Inputs")
+            st.success("The design process will be based on the following standardized parameters:")
+            
+
+            # Display the standardized inputs
+            col1, col2, col3 = st.columns(3)
+            col1.metric(label="Load (Tonnes)", value=f"{load_in_tonnes:,.2f} Tonnes")
+            col2.metric(label="Speed (m/s)", value=f"{speed_in_mps:.3f} m/s")
+            col3.metric(label="Lift (metres)", value=f"{lift_height:.2f} m")
+            
+            st.info("These values are now ready for detailed component design.")
+            st.markdown("---")
+            
 if output_type == "Final Answer Only":
     if st.button("Calculate Final Answer", type="primary"):
-        # First, save the raw data to a JSON file
-        try:
-            with open("EOT_Crane/data.json", "w") as f:
-                json.dump(input_data, f, indent=4)
-            st.toast("Input data saved to `data.json`")
-        except Exception as e:
-            st.error(f"Failed to save data: {e}")
+        with st.spinner("⚙️ Performing design calculations..."):
+            # This function call will now return either the results dictionary or None if it fails
+            final_design_report = EOT_solver.design_eot_crane(load_in_tonnes, lift_height, speed_in_mps)
 
-        # --- Unit Conversion & Calculation Logic ---
-        st.subheader("Standardized Design Inputs")
-        st.success("The design process will be based on the following standardized parameters:")
-        
+            # Check if the calculation was successful
+            if final_design_report:
+                st.success("✅ Design calculations completed successfully!")
+                st.header("Detailed Component Design Results")
+                st.info("Click on each component below to expand its detailed design specifications.")
+                st.divider()
 
-        # Display the standardized inputs
-        col1, col2, col3 = st.columns(3)
-        col1.metric(label="Load (Tonnes)", value=f"{load_in_tonnes:,.2f} Tonnes")
-        col2.metric(label="Speed (m/s)", value=f"{speed_in_mps:.3f} m/s")
-        col3.metric(label="Lift (metres)", value=f"{lift_height:.2f} m")
-        
-        st.info("These values are now ready for detailed component design.")
-        st.markdown("---")
-        st.header("Detailed Component Design Results")
-        final_design_report = EOT_solver.design_eot_crane(load_in_tonnes,lift_height, speed_in_mps)
-        if final_design_report:
-            print("\n--- ✅ Final Hoisting Mechanism Design Report ---")
-            pprint.pprint(final_design_report)
+                # --- Expander for each design step ---
 
-else: # "Step-by-step Video Solution" was selected
-    if st.button("Render Video", type="primary"):
-        # First, save the raw data to a JSON file for the backend to use
-        try:
-            with open("EOT_Crane/data.json", "w") as f:
-                json.dump(input_data, f, indent=4)
-            st.success("Input data saved to `data.json`")
-            
-            st.info("🚀 Preparing to send data to the Manim render service...")
-            
-            with st.expander("Confirm Data Sent"):
-                st.json(input_data)
-                
-            # (Here you would add the code to make an HTTP request to your FastAPI backend)
+                with st.expander("Step 1: ⛓️ Rope Design", expanded=True):
+                    rope_data = final_design_report['Rope']
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Selected Rope Diameter", f"{rope_data['Diameter_mm']:.1f} mm")
+                    col2.metric("Calculated Rope Life", f"{rope_data['Life_Months']:.1f} months")
+                    if rope_data['Status'] == 'Safe':
+                        col3.success(f"Status: {rope_data['Status']}")
+                    else:
+                        col3.error(f"Status: {rope_data['Status']}")
+                    st.write(f"Based on a required breaking load of **{rope_data['BreakingLoad_Tonnes']:.2f} Tonnes**.")
 
-        except Exception as e:
-            st.error(f"Failed to save data: {e}")
+                with st.expander("Step 2: ⚙️ Pulley & Axle Design"):
+                    pulley_data = final_design_report['Pulley']
+                    axle_data = final_design_report['AxleAndBearing']
+                    col1, col2 = st.columns(2)
+                    col1.metric("Pulley Diameter (D)", f"{pulley_data['PulleyDiameter_mm']:.0f} mm")
+                    col2.metric("Final Axle Diameter (d)", f"{axle_data['FinalAxleDiameter_mm']:.0f} mm")
+
+                with st.expander("Step 3: 🔵 Bearing Selection (for Pulley Axle)"):
+                    bearing_data = final_design_report['AxleAndBearing']
+                    col1, col2 = st.columns(2)
+                    col1.metric("Required Dynamic Load", f"{bearing_data['DynamicLoad_kgf']:.2f} kgf")
+                    st.success(f"Selected Bearing: **No. {bearing_data['SelectedBearing']['BearingNo']}**")
+
+                with st.expander("Step 4: ⚓️ Hook Design"):
+                    hook_data = final_design_report['Hook']
+                    col1, col2 = st.columns(2)
+                    col1.metric("Resultant Stress", f"{hook_data['ResultantStress_N_mm2']:.2f} N/mm²")
+                    if hook_data['Status'] == 'Safe':
+                        col2.success(f"Status: {hook_data['Status']}")
+                    else:
+                        col2.error(f"Status: {hook_data['Status']}")
+                    st.write(f"Selected Hook Type: Based on PSG 9.1 for a safe load of **{hook_data['ChosenHook']['SafeLoad']} Tonnes**.")
+
+                with st.expander("Step 5: 🔩 Nut & Thrust Bearing Design (for Hook)"):
+                    nut_data = final_design_report['Nut']
+                    thrust_bearing_data = final_design_report['ThrustBearing']
+                    col1, col2 = st.columns(2)
+                    col1.metric("Nut Height", f"{nut_data['NutHeight_mm']:.0f} mm")
+                    col2.metric("Number of Threads", nut_data['NumberOfThreads'])
+                    st.success(f"Selected Thrust Bearing: **No. {thrust_bearing_data['ChosenBearing']['BearingNo']}**")
+
+                with st.expander("Step 6: ➕ Cross Piece & Shackle Plate Design"):
+                    cross_piece_data = final_design_report['CrossPiece']
+                    shackle_data = final_design_report['ShacklePlate']
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Cross Piece Height", f"{cross_piece_data['FinalHeight_mm']:.0f} mm")
+                    col2.metric("Bearing Pressure", f"{shackle_data['BearingPressure_N_mm2']:.2f} N/mm²")
+                    if shackle_data['Status'] == 'Safe':
+                        col3.success(f"Shackle Status: {shackle_data['Status']}")
+                    else:
+                        col3.error(f"Shackle Status: {shackle_data['Status']}")
+
+                with st.expander("Step 7: 🥁 Rope Drum Design"):
+                    drum_data = final_design_report['RopeDrum']
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Drum Length", f"{drum_data['Length_mm']:.1f} mm")
+                    col2.metric("Bending Stress", f"{drum_data['BendingStress_N_mm2']:.2f} N/mm²")
+                    if drum_data['Status'] == 'Safe':
+                        col3.success(f"Status: {drum_data['Status']}")
+                    else:
+                        col3.error(f"Status: {drum_data['Status']}")
+
+                with st.expander("Step 8: shaft: Drum Shaft Design"):
+                    shaft_data = final_design_report['DrumShaft']
+                    col1, col2 = st.columns(2)
+                    col1.metric("Final Shaft Diameter", f"{shaft_data['Diameter_mm']:.0f} mm")
+                    col2.metric("Equivalent Torque", f"{shaft_data['EquivalentTorque_N_mm']:,.0f} N-mm")
+
+                st.divider()
+                # Display the full JSON report for debugging or detailed view
+                with st.expander("Show Full Design Data (JSON)"):
+                    st.json(final_design_report)
+
+            else:
+                # This block runs if design_eot_crane returned None
+                st.error("❌ Design Calculation Failed. The input parameters may be outside the valid design range of the PSG data book. Please check the console for specific errors.")

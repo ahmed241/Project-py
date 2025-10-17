@@ -45,7 +45,7 @@ class AssignmentRequest(BaseModel):
 class EOTRequest(BaseModel):
     load: float
     speed: float
-    height: float
+    lift: float
 
 # ==================== ENDPOINTS ====================
 
@@ -148,13 +148,9 @@ def solve_assignment(request: AssignmentRequest):
         )
         if result.returncode != 0:
             return {"error": result.stderr}
-
-        lines = result.stdout.strip().split('\n')
-        video_file = lines[-1].strip()
-
         return {
             "status": "success",
-            "video_url": f"public/videos/animation/480p15/{video_filename}", # We already know the URL!
+            "video_url": f"/videos/animation/480p15/{video_filename}", # We already know the URL!
             "message": "Animation generated successfully"
         }
 
@@ -165,31 +161,45 @@ def solve_assignment(request: AssignmentRequest):
 def generate_eot(request: EOTRequest):
     """Run EOT Crane animation"""
     try:
-        # Define a reliable, absolute path to the script
-        script_path = os.path.join(BACKEND_DIR, "EOT_Crane", "animation.py")
+        # Define reliable, absolute paths
+        problem_dir = os.path.join(BACKEND_DIR, "EOT_Crane")
+        json_path = os.path.join(problem_dir, "data.json")
+        script_path = os.path.join(problem_dir, "animation.py")
 
-        # Run Python script with arguments
+        # Ensure the target directory exists
+        os.makedirs(problem_dir, exist_ok=True)
+
+        with open(json_path, "w") as f:
+            json.dump({
+                "load": request.load,
+                "speed": request.speed,
+                "lift": request.lift
+            }, f)
+            
+        # 1. Generate a unique filename to prevent conflicts
+        video_filename = f"{uuid.uuid4()}.mp4"
+        # 2. Build a robust command that tells Manim exactly where to save the video
+        command = [
+            "manim",
+            script_path,           # Your script to run
+            "-ql",                 # Render in low quality (faster)
+            "--media_dir", os.path.join(PUBLIC_DIR), # Tell Manim to use /public as the root media folder
+            "-o", video_filename, # The final name for the video file
+            "--disable_caching"  
+        ]
+
+        # 3. Run the updated command
         result = subprocess.run(
-            [
-                "python", script_path,
-                "--load", str(request.load),
-                "--speed", str(request.speed),
-                "--lift", str(request.height)
-            ],
+            command,
             capture_output=True,
-            text=True,
-            timeout=120
+            text=True
         )
-
         if result.returncode != 0:
             return {"error": result.stderr}
-
-        lines = result.stdout.strip().split('\n')
-        video_file = lines[-1].strip()
-
         return {
             "status": "success",
-            "video_url": f"/videos/{video_file}"
+            "video_url": f"/videos/animation/480p15/{video_filename}", # We already know the URL!
+            "message": "Animation generated successfully"
         }
 
     except Exception as e:
