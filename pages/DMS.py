@@ -4,8 +4,7 @@ import streamlit as st
 st.set_page_config(
     page_title="Mechanical Design Solver",
     page_icon="⚙️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # Custom CSS for better styling
@@ -70,7 +69,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-
+if st.button("⬅️ Back to Main Menu", use_container_width=False):
+    st.switch_page("home.py")
+    
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Main header

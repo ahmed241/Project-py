@@ -4,8 +4,7 @@ import streamlit as st
 st.set_page_config(
     page_title="Operations Research Solver",
     page_icon="🎯",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # Custom CSS for better styling
@@ -62,7 +61,7 @@ st.markdown("""
 # Main header
 # Back to main button
 if st.button("⬅️ Back to Main Menu", use_container_width=False):
-    st.switch_page("Home.py")
+    st.switch_page("home.py")
 st.markdown("""
     <div class="main-header">
         <h1>🎯 Operations Research Solver Suite</h1>
