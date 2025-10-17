@@ -111,7 +111,7 @@ def solve_assignment(request: AssignmentRequest):
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/api/eot-crane")
+@app.post("/api/eot_crane")
 def generate_eot(request: EOTRequest):
     """Run EOT Crane animation"""
     try:
