@@ -18,7 +18,7 @@ jobs: Dict[str, Dict] = {}
 # --- Build Absolute Paths ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
-BACKEND_DIR = os.path.join(BASE_DIR, "backend")
+BACKEND_DIR = os.path.join(BASE_DIR)
 
 # --- CORS Middleware ---
 app.add_middleware(
