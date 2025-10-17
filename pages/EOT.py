@@ -3,16 +3,13 @@ import json
 import pprint
 from backend.EOT_Crane import EOT_solver
 import requests
-import time
 
-BACKEND_URL = "https://project-py-3q8o.onrender.com"
+BACKEND_URL = "http://localhost:7000"
 
 # Page configuration
 st.set_page_config(page_title="EOT Crane Design", page_icon="🏗️")
 
 # Page Title
-if st.button("⬅️ Back", use_container_width=False):
-    st.switch_page("pages/DMS.py")
 st.title("🏗️ EOT Crane Hoisting Mechanism Design")
 st.write("Enter the required specifications to begin the design process based on PSG Design Data Book standards.")
 st.markdown("---")
@@ -73,81 +70,35 @@ else: # 'm/s'
 
 # Create a dictionary of the input data
 if output_type == "Step-by-Step Video Solution":
-    if st.button("🎬 Render Video Solution", type="primary"):
-        # Prepare the data payload with keys matching the backend model ('load', 'speed', 'height')
-        request_data = {
-            "load": load_in_tonnes,
-            "speed": speed_in_mps,
-            "height": lift_height
-        }
-
-        job_id = None
-        try:
-            # --- Step 1: Start the Job ---
-            # Call the new 'start' endpoint. This request is fast and returns immediately.
-            st.info("🚀 Sending request to the server...")
-            response = requests.post(
-                f"{BACKEND_URL}/api/eot_crane",
-                json=request_data
-            )
-            response.raise_for_status() # Check for HTTP errors like 404 or 500
-
-            job_id = response.json().get("job_id")
-            if not job_id:
-                st.error("Backend did not return a job ID. Cannot proceed.")
-                st.stop()
-
-        except Exception as e:
-            st.error(f"❌ Failed to start the animation job: {e}")
-            st.stop()
-
-        # --- Step 2: Poll for Status ---
-        st.success(f"✅ Job started successfully! Rendering video in the background...")
-
-        # Initialize a progress bar to give the user feedback
-        progress_bar = st.progress(0, text="Waiting for render to begin...")
-
-        while True:
+    if st.button("Render Video", type="primary"):
+        # First, save the raw data to a JSON file
+        with st.spinner("⚙️ Working on the Video"):
             try:
-                # Poll the status endpoint with the job_id
-                status_response = requests.get(f"{BACKEND_URL}/api/status/{job_id}")
-                status_data = status_response.json()
-                status = status_data.get("status")
-
-                if status == "completed":
-                    progress_bar.progress(100, text="Render Complete!")
+                # Call backend API
+                response = requests.post(
+                    f"{BACKEND_URL}/api/eot-crane",
+                    json={
+                        "load": load_in_tonnes,
+                        "speed": speed_in_mps,
+                        "lift": lift_height
+                        }
+                )
+                result = response.json()
+                
+                if "error" in result:
+                    st.error(f"Error: {result['error']}")
+                else:
                     st.success("✅ Animation generated successfully!")
-
-                    # Build the full URL to the video file and display it
-                    video_url = f"{BACKEND_URL}{status_data['video_url']}"
+                    
+                    # Display video
+                    video_url = f"{BACKEND_URL}{result['video_url']}"
                     st.video(video_url)
+                    # Download link
                     st.markdown(f"[📥 Download Video]({video_url})")
-                    break # Exit the polling loop
-
-                elif status == "failed":
-                    st.error("❌ Animation generation failed on the server.")
-                    # Display the detailed error log from Manim for easy debugging
-                    error_details = status_data.get('error', 'No error details available.')
-                    st.text_area("Server Error Log:", error_details, height=250)
-                    progress_bar.empty() # Remove the progress bar on failure
-                    break # Exit the loop
-
-                elif status == "running":
-                    # Animate the progress bar to show that the app is still working
-                    current_progress = progress_bar.value
-                    if current_progress < 95:
-                        progress_bar.progress(current_progress + 3, text="Rendering in progress... please wait.")
-
-                else: # Handle any unexpected status from the backend
-                    st.error(f"Received an unknown status from the server: '{status}'")
-                    break
-
-                # Wait for a few seconds before the next poll
-                time.sleep(3)
-
+                
             except Exception as e:
-                st.error(f"An error occurred while checking the job status: {e}")
-                break
+                    st.error(f"❌ Error: {str(e)}")
+
             # --- Unit Conversion & Calculation Logic ---
             st.subheader("Standardized Design Inputs")
             st.success("The design process will be based on the following standardized parameters:")

@@ -1,26 +1,36 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import subprocess
 import json
 import os
-from typing import List
+import uuid
+from typing import List, Dict
 
 app = FastAPI()
 
-# Enable CORS
+# --- Global dictionary to store job statuses and results ---
+# This is simple for demonstration. For a more robust app, you might use Redis.
+jobs: Dict[str, Dict] = {}
+
+# --- Build Absolute Paths ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_DIR = os.path.join(BASE_DIR, "public")
+BACKEND_DIR = os.path.join(BASE_DIR, "backend")
+
+# --- CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all
-    allow_credentials = False,  # Must be False with "*"
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-# Serve video files
-app.mount("/videos", StaticFiles(directory="public/videos"), name="videos")
+# --- Static File Serving ---
+# This ensures the /videos directory inside /public is served.
+videos_dir = os.path.join(PUBLIC_DIR, "videos")
+os.makedirs(videos_dir, exist_ok=True)
+app.mount("/videos", StaticFiles(directory=videos_dir), name="videos")
 
 # ==================== DATA MODELS ====================
 
@@ -36,7 +46,8 @@ class AssignmentRequest(BaseModel):
 class EOTRequest(BaseModel):
     load: float
     speed: float
-    height: float
+    lift: float
+
 
 # ==================== ENDPOINTS ====================
 
@@ -48,35 +59,56 @@ def root():
 def solve_transportation(request: TransportationRequest):
     """Run transportation animation"""
     try:
-        # Save data to JSON
-        with open("backend/Transportation/transportation_problem.json", "w") as f:
+        # Define reliable, absolute paths
+        problem_dir = os.path.join(BACKEND_DIR, "Transportation")
+        json_path = os.path.join(problem_dir, "transportation_problem.json")
+        script_path = os.path.join(problem_dir, "animation.py")
+
+        # Ensure the target directory exists before writing to it
+        os.makedirs(problem_dir, exist_ok=True)
+
+        # Save data to JSON using the reliable path
+        with open(json_path, "w") as f:
             json.dump({
                 "supply": request.supply,
                 "demand": request.demand,
                 "costs": request.costs
             }, f)
+
+        # --- THIS IS THE UPDATED SECTION ---
+
+        # 1. Generate a unique filename to prevent conflicts
+        video_filename = f"{uuid.uuid4()}.mp4"
         
-        # Run Python script
+        # 2. Build a robust command that tells Manim exactly where to save the video
+        command = [
+            "manim",
+            script_path,           # Your script to run
+            "-ql",                 # Render in low quality (faster)
+            "--media_dir", os.path.join(PUBLIC_DIR), # Tell Manim to use /public as the root media folder
+            "-o", video_filename,
+            "--disable_caching"  # The final name for the video file
+        ]
+
+        # 3. Run the updated command
         result = subprocess.run(
-            ["python", "backend/Transportation/animation.py"],
+            command,
             capture_output=True,
-            text=True,
-            timeout=120
+            text=True
         )
         
+        # 4. Check for errors
         if result.returncode != 0:
+            # Manim often outputs useful errors to stderr
             return {"error": result.stderr}
-        
-        # Get video filename from output
-        lines = result.stdout.strip().split('\n')
-        video_file = lines[-1].strip()
-        
+
+        # 5. Return the predictable URL
         return {
-            "status": "success",
-            "video_url": f"/videos/{video_file}",
-            "message": "Animation generated successfully"
-        }
-    
+        "status": "success",
+        "video_url": f"/videos/animation/480p15/{video_filename}",
+        "message": "Animation generated successfully"
+    }
+
     except Exception as e:
         return {"error": str(e)}
 
@@ -84,61 +116,94 @@ def solve_transportation(request: TransportationRequest):
 def solve_assignment(request: AssignmentRequest):
     """Run assignment problem animation"""
     try:
-        with open("backend/Assignment/data.json", "w") as f:
+        # Define reliable, absolute paths
+        problem_dir = os.path.join(BACKEND_DIR, "Assignment")
+        json_path = os.path.join(problem_dir, "data.json")
+        script_path = os.path.join(problem_dir, "animation.py")
+
+        # Ensure the target directory exists
+        os.makedirs(problem_dir, exist_ok=True)
+
+        with open(json_path, "w") as f:
             json.dump({
                 "matrix": request.matrix,
                 "type": request.problem_type
             }, f)
-        
+            
+        # 1. Generate a unique filename to prevent conflicts
+        video_filename = f"{uuid.uuid4()}.mp4"
+        # 2. Build a robust command that tells Manim exactly where to save the video
+        command = [
+            "manim",
+            script_path,           # Your script to run
+            "-ql",                 # Render in low quality (faster)
+            "--media_dir", os.path.join(PUBLIC_DIR), # Tell Manim to use /public as the root media folder
+            "-o", video_filename, # The final name for the video file
+            "--disable_caching"  
+        ]
+
+        # 3. Run the updated command
         result = subprocess.run(
-            ["python", "backend/Assignment/animation.py"],
+            command,
             capture_output=True,
-            text=True,
-            timeout=120
+            text=True
         )
-        
         if result.returncode != 0:
             return {"error": result.stderr}
-        
-        lines = result.stdout.strip().split('\n')
-        video_file = lines[-1].strip()
-        
         return {
             "status": "success",
-            "video_url": f"/videos/{video_file}"
+            "video_url": f"/videos/animation/480p15/{video_filename}", # We already know the URL!
+            "message": "Animation generated successfully"
         }
-    
+
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/api/eot_crane")
+@app.post("/api/eot-crane")
 def generate_eot(request: EOTRequest):
     """Run EOT Crane animation"""
     try:
-        # Run Python script with arguments
+        # Define reliable, absolute paths
+        problem_dir = os.path.join(BACKEND_DIR, "EOT_Crane")
+        json_path = os.path.join(problem_dir, "data.json")
+        script_path = os.path.join(problem_dir, "animation.py")
+
+        # Ensure the target directory exists
+        os.makedirs(problem_dir, exist_ok=True)
+
+        with open(json_path, "w") as f:
+            json.dump({
+                "load": request.load,
+                "speed": request.speed,
+                "lift": request.lift
+            }, f)
+            
+        # 1. Generate a unique filename to prevent conflicts
+        video_filename = f"{uuid.uuid4()}.mp4"
+        # 2. Build a robust command that tells Manim exactly where to save the video
+        command = [
+            "manim",
+            script_path,           # Your script to run
+            "-ql",                 # Render in low quality (faster)
+            "--media_dir", os.path.join(PUBLIC_DIR), # Tell Manim to use /public as the root media folder
+            "-o", video_filename, # The final name for the video file
+            "--disable_caching"  
+        ]
+
+        # 3. Run the updated command
         result = subprocess.run(
-            [
-                "python", "backend/EOT_Crane/animation.py",
-                "--load", str(request.load),
-                "--speed", str(request.speed),
-                "--lift", str(request.height)
-            ],
+            command,
             capture_output=True,
-            text=True,
-            timeout=120
+            text=True
         )
-        
         if result.returncode != 0:
             return {"error": result.stderr}
-        
-        lines = result.stdout.strip().split('\n')
-        video_file = lines[-1].strip()
-        
         return {
             "status": "success",
-            "video_url": f"/videos/{video_file}"
+            "video_url": f"/videos/animation/480p15/{video_filename}", # We already know the URL!
+            "message": "Animation generated successfully"
         }
-    
+
     except Exception as e:
         return {"error": str(e)}
 
