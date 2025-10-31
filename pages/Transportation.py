@@ -115,7 +115,6 @@ st.subheader("3. Define Cost Matrix")
 # Initialize or update our "source of truth" DataFrame in session state
 if 'editable_tp_df' not in st.session_state or st.session_state.editable_tp_df.shape != (num_sources, num_destinations):
     st.session_state.editable_tp_df = pd.DataFrame(
-        [[10 for _ in range(num_destinations)] for _ in range(num_sources)],
         columns=[f"Destination {j + 1}" for j in range(num_destinations)],
         index=[f"Source {chr(65 + i)}" for i in range(num_sources)]
     )
@@ -147,7 +146,7 @@ if output_type == "Step-by-Step Video":
                 try:
                     # Call backend API
                     response = requests.post(
-                        f"{BACKEND_URL}/api/transportation",
+                        f"{BACKEND_URL}/api/transportation_VAM",
                         json={
                             "supply": supply,
                             "demand": demand,

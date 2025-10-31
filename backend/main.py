@@ -18,7 +18,6 @@ jobs: Dict[str, Dict] = {}
 # --- Build Absolute Paths ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
-BACKEND_DIR = os.path.join(BASE_DIR)
 
 # --- CORS Middleware ---
 app.add_middleware(
@@ -32,7 +31,7 @@ videos_dir = os.path.join(PUBLIC_DIR, "videos")
 os.makedirs(videos_dir, exist_ok=True)
 app.mount("/videos", StaticFiles(directory=videos_dir), name="videos")
 
-# ==================== DATA MODELS ====================
+# ==================== DATA MODELS ======================
 
 class TransportationRequest(BaseModel):
     supply: List[float]
@@ -56,11 +55,11 @@ def root():
     return {"message": "Engineering Solver Backend Running"}
 
 @app.post("/api/transportation")
-def solve_transportation(request: TransportationRequest):
+def solve_transportation_VAM(request: TransportationRequest):
     """Run transportation animation"""
     try:
         # Define reliable, absolute paths
-        problem_dir = os.path.join(BACKEND_DIR, "Transportation")
+        problem_dir = os.path.join(BASE_DIR, "Transportation", "VAM")
         json_path = os.path.join(problem_dir, "transportation_problem.json")
         script_path = os.path.join(problem_dir, "animation.py")
 
@@ -117,7 +116,7 @@ def solve_assignment(request: AssignmentRequest):
     """Run assignment problem animation"""
     try:
         # Define reliable, absolute paths
-        problem_dir = os.path.join(BACKEND_DIR, "Assignment")
+        problem_dir = os.path.join(BASE_DIR, "Assignment")
         json_path = os.path.join(problem_dir, "data.json")
         script_path = os.path.join(problem_dir, "animation.py")
 
@@ -164,7 +163,7 @@ def generate_eot(request: EOTRequest):
     """Run EOT Crane animation"""
     try:
         # Define reliable, absolute paths
-        problem_dir = os.path.join(BACKEND_DIR, "EOT_Crane")
+        problem_dir = os.path.join(BASE_DIR, "EOT_Crane")
         json_path = os.path.join(problem_dir, "data.json")
         script_path = os.path.join(problem_dir, "animation.py")
 
