@@ -9,6 +9,8 @@ import os
 import uuid
 from typing import List, Dict
 
+from .LaplaceTransform import laplace_solver
+
 app = FastAPI()
 
 # --- Global dictionary to store job statuses and results ---
@@ -46,6 +48,12 @@ class EOTRequest(BaseModel):
     load: float
     speed: float
     lift: float
+
+class LaplaceRequest(BaseModel):
+    inputLatex: str
+    format: str = "latex"
+    output: str = "instant"
+    options: Dict = {}
 
 
 # ==================== ENDPOINTS ====================
@@ -202,6 +210,87 @@ def generate_eot(request: EOTRequest):
             "video_url": f"/videos/animation/480p15/{video_filename}", # We already know the URL!
             "message": "Animation generated successfully"
         }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/laplace")
+def solve_laplace(request: LaplaceRequest):
+    """
+    Solve Laplace or Inverse Laplace Transform and optionally generate Manim animation.
+    """
+    try:
+        problem_dir = os.path.join(BASE_DIR, "LaplaceTransform")
+        json_path = os.path.join(problem_dir, "data.json")
+        animation_script_path = os.path.join(problem_dir, "animation.py")
+
+        os.makedirs(problem_dir, exist_ok=True)
+
+        if request.output == "instant":
+            result = laplace_solver.solve_laplace_transform(
+                request.inputLatex,
+                request.options.get("showSteps", False)
+            )
+            return {"result": result}
+        elif request.output == "inverse":
+            result = laplace_solver.solve_inverse_laplace_transform(
+                request.inputLatex,
+                request.options.get("showSteps", False)
+            )
+            return {"result": result}
+        elif request.output == "video":
+            # First, get the result from the solver to pass to Manim
+            solver_result = laplace_solver.solve_laplace_transform(
+                request.inputLatex,
+                request.options.get("showSteps", False)
+            )
+            if not solver_result["ok"]:
+                return {"error": solver_result["error"]}
+
+            # Save data for Manim animation
+            with open(json_path, "w") as f:
+                json.dump({
+                    "inputLatex": request.inputLatex,
+                    "outputLatex": solver_result["latex"],
+                    "showSteps": request.options.get("showSteps", False),
+                    "steps": solver_result.get("steps", [])
+                }, f)
+
+            video_filename = f"laplace_{uuid.uuid4()}.mp4"
+            command = [
+                "manim",
+                animation_script_path,
+                "-ql",
+                "--media_dir", os.path.join(PUBLIC_DIR),
+                "-o", video_filename,
+                "--disable_caching"
+            ]
+
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode != 0:
+                print("Manim Error (stdout):", result.stdout)
+                print("Manim Error (stderr):", result.stderr)
+                return {"error": result.stderr}
+            
+            # Manim saves videos in a subdirectory like 480p15
+            # We need to find the actual path.
+            # A more robust solution would parse Manim's output for the exact path.
+            # For now, we'll assume the default 480p15.
+            return {
+                "status": "success",
+                "videoUrl": f"/videos/LaplaceTransformScene/480p15/{video_filename}",
+                "message": "Laplace Transform animation generated successfully"
+            }
+        elif request.output == "pdf":
+            # PDF generation logic (placeholder for now)
+            return {"error": "PDF generation not implemented yet."}
+        else:
+            return {"error": "Invalid output type specified."}
 
     except Exception as e:
         return {"error": str(e)}
