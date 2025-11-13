@@ -148,7 +148,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Main Categories
-col1, col2 = st.columns(2, gap="large")
+col1, col2, col3 = st.columns(3, gap="large")
 
 with col1:
     st.markdown("""
@@ -195,6 +195,27 @@ with col2:
     st.write("")
     if st.button("🚀 Explore Mechanical Design", key="mech_btn", use_container_width=True):
         st.switch_page("pages/DMS.py")
+
+with col3:
+    st.markdown("""
+        <div class="category-card">
+            <span class="category-icon">🌐</span>
+            <div class="category-title">Algo-Viz</div>
+            <div class="category-description">
+                A web-based platform for visualizing algorithms and data structures.
+            </div>
+            <div class="feature-grid">
+                <div class="feature-item">🔍 Sorting Algorithms</div>
+                <div class="feature-item">🌲 Tree Traversal</div>
+                <div class="feature-item">🗺️ Pathfinding</div>
+                <div class="feature-item">📊 Graph Algorithms</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.write("")
+    if st.button("🚀 Explore Algo-Viz", key="algo_btn", use_container_width=True):
+        st.switch_page("pages/Algo-viz.py")
 
 # Statistics Section
 st.markdown("---")

@@ -1,5 +1,8 @@
 from VAM_solver import solve_vam
-
+import argparse
+import sys
+import json
+import numpy as np
 
 def check_degeneracy(initial_allocations, costs):
     """Check if Solution is degenerate or not m+n-1 = no. of allocation
@@ -201,7 +204,10 @@ def calculate_opportunity_costs(costs, allocations, u, v):
     # Loop through every cell in the matrix
     for r in range(num_rows):
         for c in range(num_cols):
-            
+            if u[r] == None:
+                u[r] = 0
+            if v[c] == None:
+                v[c] = 0
             # We only calculate this for UNALLOCATED cells
             # (Allocated cells have a value > 0, including epsilon)
             if allocations[r][c] == 0:
@@ -456,88 +462,61 @@ def calculate_final_cost(costs, allocations):
             total_cost += costs[i][j] * allocations[i][j]
     return total_cost
 
-
-def solve_MODI(costs, initial_allocation):
+def solve_MODI(costs_for_modi, original_costs, initial_allocation):
     """
     Solve transportation problem using the Modified Distribution (MODI) method.
-    This method takes an initial feasible solution and improves it to optimality.
-    
+    ...
     Parameters:
-    costs: 2D list of transportation costs.
-    initial_allocation: 2D list of allocated quantities from an initial method (e.g., VAM).
-    
-    Returns:
-    optimal_allocation: 2D list of the final, optimal allocated quantities.
-    total_cost: The optimal total transportation cost.
+    costs_for_modi: 2D list of costs for MODI logic (minimization matrix).
+    original_costs: 2D list of the original problem costs (for final sum).
+    initial_allocation: 2D list of allocated quantities from VAM.
+    ...
     """
-    # checks if solution is non-degenerate or not (m+n-1=no. allocated cells)
-    is_non_degenerate, diff = check_degeneracy(initial_allocation, costs)
+    
+    current_allocation = [row[:] for row in initial_allocation]
+    
+    while True:
+        # 1. Handle Degeneracy (uses minimization matrix)
+        is_non_degenerate, diff = check_degeneracy(current_allocation, costs_for_modi)
+        print("done degeneracy")
 
-    # if solution is degenerate 
-    if is_non_degenerate == False:
-        # finds an unallocated cell with least cost
-        epsilon_cells = find_min_cost_unallocated(costs, initial_allocation, diff)
-        # allocates very small number 'epsilon' to an unallocated cell with least cost
-        initial_allocation = add_epsilon_allocations(initial_allocation, epsilon_cells)
+        if not is_non_degenerate:
+            epsilon_cells = find_min_cost_unallocated(costs_for_modi, current_allocation, diff)
+            current_allocation = add_epsilon_allocations(current_allocation, epsilon_cells)
+            print("adjusted degeneracy")
 
-    # Calculates u, v C(ij) = u(i) + v(j)
-    u, v = u_v_calculation(costs, initial_allocation)
+        # 2. Calculate u, v (uses minimization matrix)
+        u, v = u_v_calculation(costs_for_modi, current_allocation)
+        print("done u & v calculation")
 
-    # calculates opportunity cost for unallocated cells opp_cost(i,j) = u(i) + v(j) - cost(i,j)
-    opportunity_cost = calculate_opportunity_costs(costs, initial_allocation, u, v)
+        # 3. Calculate Opportunity Costs (uses minimization matrix)
+        opportunity_cost = calculate_opportunity_costs(costs_for_modi, current_allocation, u, v)
+        print("done opportunity cost")
 
-    # checks if solution is optimal or not (opportunity cost should be less than or equal to zero for optimality)
-    is_optimal, pivot_cell = check_optimality(opportunity_cost)
+        # 4. Check for Optimality
+        is_optimal, pivot_cell = check_optimality(opportunity_cost)
+        print("done optimality check")
 
-    # if not optimal
-    if is_optimal == False:
-        # find loops following three rules
-        loop = find_loop(initial_allocation, pivot_cell)
-        # adjusts the allocation to make it optimal
-        new_allocation = adjust_allocations(initial_allocation, loop)
+        if is_optimal:
+            print("Solution is optimal. Breaking loop.")
+            break
+        else:
+            # 5a. Find Loop
+            loop = find_loop(current_allocation, pivot_cell)
+            print("found loop")
+            
+            if loop is None:
+                print("Error: Could not find a loop. Returning current solution.", file=sys.stderr)
+                break 
 
-        # recheck if solution is optimal
-        u, v = u_v_calculation(costs, new_allocation)
-        new_opportunity_cost = calculate_opportunity_costs(costs, new_allocation, u, v)
-        is_optimal, pivot_cell= check_optimality(new_opportunity_cost)
-
-        total_cost = calculate_final_cost(costs, new_allocation)
-        return new_allocation, total_cost
-    else:
-        total_cost = calculate_final_cost(costs, initial_allocation)
-    return initial_allocation, total_cost
-# --- Main execution flow ---
-if __name__ == "__main__":
-    # costs = [
-    #                 [40, 25, 22, 33],
-    #                 [44, 35, 30, 30],
-    #                 [38, 38, 28, 30]
-    #             ]
-    # demand = [40, 20, 60, 30]
-    # supply = [100, 30, 70]
-    costs = [
-                    [19, 30, 50, 10],
-                    [70, 30, 40, 60],
-                    [40, 8, 70, 20]
-                ]
-    demand = [5, 8, 7, 14]
-    supply = [7, 9, 18]
-
-    # This line was causing the error. 
-    # To fix the test itself, you'd do:
-    # initial_allocation, initial_cost, _, _, _ = solve_vam(supply, demand, costs)
-
-    # But we'll use the correct 5-value unpack:
-    initial_allocation, initial_cost, update_costs, update_demad, update_supply = solve_vam(supply, demand, costs)
-
-    print(f"Initial VAM Cost: {initial_cost}")
-
-    # Note: Your solve_MODI expects the original costs, not update_costs
-    final_allocation, total_cost = solve_MODI(costs, initial_allocation)
-
-    print("\n--- MODI Solution ---")
-    print("Final Solution from Modified Distribution Method (MODI):")
-    for row in final_allocation:
-        print(row)
-
-    print(f"\nTotal Cost: {total_cost}")
+            # 5b. Adjust Allocations
+            new_allocation_matrix, _, _, _ = adjust_allocations(current_allocation, loop)
+            print("adjusted allocation")
+            
+            current_allocation = new_allocation_matrix
+            print("--- RESTARTING LOOP ---")
+            
+    # 6. After loop breaks, calculate final cost using ORIGINAL costs
+    total_cost = calculate_final_cost(original_costs, current_allocation)
+    
+    return current_allocation, total_cost

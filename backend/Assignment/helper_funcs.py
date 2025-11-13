@@ -1,4 +1,6 @@
 from manim import *
+from manim_narration import NarrationScene
+from manim_narration.speech import KokoroService
 
 class AnimationHelpers:
     """
@@ -32,54 +34,18 @@ class AnimationHelpers:
         self.wait(1)
         return table
 
-    def animate_square_check(self, table):
-        """
-        Animates the process of checking if a table is square.
-        Returns True if it is, False otherwise.
-        """
-        # Get the VGroups for data rows and columns (excluding headers/labels)
-        data_rows = VGroup(*table.get_rows()[1:])
-        data_cols = VGroup(*table.get_columns()[1:])
-        num_rows = len(data_rows)
-        num_cols = len(data_cols)
-
-        self.play(table.animate.shift(DOWN*0.75))
-        # 1. Highlight and count the rows
-        row_box = SurroundingRectangle(data_rows, color=BLUE, buff=0.2)
-        row_text = Tex(f"Rows = {num_rows}").next_to(row_box, RIGHT)
-        self.play(Create(row_box), Write(row_text))
-        self.wait(1)
-
-        # 2. Highlight and count the columns
-        col_box = SurroundingRectangle(data_cols, color=YELLOW, buff=0.2)
-        col_text = Tex(f"Columns = {num_cols}").next_to(col_box, DOWN)
-        self.play(Create(col_box), Write(col_text))
-        self.wait(1)
-
-        # 3. Display the final result
-        is_square = (num_rows == num_cols)
-        if is_square:
-            result_text = Tex("Matrix is Square (Rows = Columns)", color=GREEN).scale(0.8)
-        else:
-            result_text = Tex("Matrix is Not Square", color=RED).scale(0.8)
-        
-        result_text.next_to(table, UP, buff=0.15)
-        self.play(Write(result_text))
-        self.wait(1.5)
-
-        # 4. Clean up the animation
-        self.play(FadeOut(VGroup(row_box, row_text, col_box, col_text, result_text)))
-        
-        return is_square
-    
     def animate_maximization_transform(self, table, data):
         """
         Animates the conversion of a maximization problem to a minimization problem.
         Returns the new data and the new Manim table object.
         """
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
         # 1. Explain the goal
         explanation = Tex("Maximization Problem:", " Convert to Minimization").scale(0.8).next_to(table, UP, buff=0.65)
-        self.play(Write(explanation), table.animate.shift(DOWN*0.75).scale(0.9))
+        with self.narration(speech_service_id="en", text = "As the Problem Says Maximization we have to convert this data to minimization data as hungarian algorithm only works on minimization.") as narration:
+            self.play(Write(explanation), table.animate.shift(DOWN*0.75).scale(0.9), run_time=narration.duration)
         self.wait(1)
 
         # 2. Find the maximum value in the matrix
@@ -92,16 +58,20 @@ class AnimationHelpers:
         # Animate finding the max value
         max_val_text = Tex(f"Find maximum value: {max_val}").scale(0.8).next_to(explanation, DOWN)
         max_val_cells = VGroup(*[cell for cell in table.get_entries() if isinstance(cell, Integer) and cell.get_value() == max_val])
-        self.play(Write(max_val_text))
-        self.play(Indicate(max_val_cells, color=ORANGE, scale_factor=1.2))
+        with self.narration(speech_service_id="en", text = "Find the cell with maximum value") as narration:
+            self.play(Write(max_val_text), run_time=narration.duration)
+        with self.narration(speech_service_id="en", text = f"that is {max_val}") as narration:
+            self.play(Indicate(max_val_cells, color=ORANGE, scale_factor=1.2))
         self.wait(1)
 
         # 3. Explain the transformation rule
         rule_text = Tex("New Value", "=", "Max Value", "-", "Old Value", font_size=36).next_to(max_val_text, DOWN)
         rule_text_1 = Tex("New Value", "=", f"{max_val}", "-", "Old Value", font_size=36).next_to(max_val_text, DOWN)
-        self.play(Write(rule_text))
+        with self.narration(speech_service_id="en", text = f"Next Subtract each entry in the table with the maximum Value {max_val}") as narration:
+            self.play(Write(rule_text))
         self.wait(1)
-        self.play(ReplacementTransform(rule_text, rule_text_1, path_arc=PI/2), rum_time=1.5)
+        with self.narration(speech_service_id="en", text = f"New Value is equal to {max_val} minus Old Value") as narration:
+            self.play(ReplacementTransform(rule_text, rule_text_1, path_arc=PI/2), rum_time=1.5)
 
         # 4. Calculate the new data and create the new table
         new_data = [[max_val - val for val in row] for row in data]
@@ -114,34 +84,107 @@ class AnimationHelpers:
             new_table_obj = IntegerTable(table_data, col_labels=col_lbls, row_labels=row_lbls, h_buff=1.5).scale(0.7)
             new_table_obj.move_to(position)
             return new_table_obj
-
+        
         new_table = create_new_table_from_data(new_data, table.get_center())
 
         # 5. Animate the transformation and clean up
-        self.play(
-            ReplacementTransform(table, new_table),
-            FadeOut(VGroup(explanation, max_val_text, rule_text_1))
-        )
-        self.wait(1)
+        with self.narration(speech_service_id="en", text = "like this") as narration:
+            self.play(
+                ReplacementTransform(table, new_table),
+                FadeOut(VGroup(explanation, max_val_text, rule_text_1))
+            )
+        self.wait(0.5)
         
         return new_data, new_table
+    
+    def animate_square_check(self, table):
+        """
+        Animates the process of checking if a table is square.
+        Returns True if it is, False otherwise.
+        """
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
+        # Get the VGroups for data rows and columns (excluding headers/labels)
+        data_rows = VGroup(*table.get_rows()[1:])
+        data_cols = VGroup(*table.get_columns()[1:])
+        num_rows = len(data_rows)
+        num_cols = len(data_cols)
+
+        self.play(table.animate.scale(0.85).shift(DOWN*0.75 + LEFT*1.25))
+        # 1. Highlight and count the rows
+        row_box = SurroundingRectangle(data_rows, color=BLUE, buff=0.2)
+        row_text = Tex(f"Number of Rows is equal to {num_rows}").next_to(row_box, RIGHT)
+        with self.narration(speech_service_id="en", text = f"Rows = {num_rows}") as narration:
+            self.play(Create(row_box), Write(row_text), run_time=narration.duration)
+        self.wait(1)
+
+        # 2. Highlight and count the columns
+        col_box = SurroundingRectangle(data_cols, color=YELLOW, buff=0.2)
+        col_text = Tex(f"Columns = {num_cols}").next_to(col_box, DOWN)
+        with self.narration(speech_service_id="en", text = f"Number of Columns is equal to {num_cols}") as narration:
+            self.play(Create(col_box), Write(col_text), run_time=narration.duration)
+        self.wait(1)
+
+        # 3. Display the final result
+        is_square = (num_rows == num_cols)
+        if is_square:
+            result_text = Tex("Matrix is Square (Rows = Columns)", color=GREEN).scale(0.8)
+            result_str = f"Matrix is Square, As  {num_cols} is equal to {num_rows}"
+        else:
+            result_text = Tex("Matrix is Not Square", color=RED).scale(0.8)
+            result_str = f"Matrix is not Square, As  {num_cols} is not equal to {num_rows}"
+        
+        result_text.next_to(table, UP, buff=0.15)
+        with self.narration(speech_service_id="en", text = result_str) as narration:
+            self.play(Write(result_text), run_time=narration.duration)
+        self.wait(1.5)
+
+        # 4. Clean up the animation
+        self.play(FadeOut(VGroup(row_box, row_text, col_box, col_text, result_text)), table.animate.shift(RIGHT*1.25))
+        
+        return is_square
     
     def animate_add_dummies(self, table, data):
         """
         Animates adding dummy rows or columns to balance a non-square matrix.
         Returns the new data and the new Manim table object.
         """
+        # Set up the speech service
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
+        
         num_rows = len(data)
         num_cols = len(data[0])
         
+        # --- Narration for the "Why" ---
+        with self.narration(speech_service_id="en", text="The first step in the Hungarian method is to check if the cost matrix is square.") as narration:
+            self.play(Circumscribe(table, color=BLUE), run_time=narration.duration)
+
+        with self.narration(speech_service_id="en", text="This means the number of rows must be equal to the number of columns.") as narration:
+            self.wait(narration.duration) # Just wait while speaking
+        
+        # --- Narration for the "Do Nothing" case ---
         if num_rows == num_cols:
+            with self.narration(speech_service_id="en", text="Our matrix is already square, so no changes are needed. We can proceed.") as narration:
+                self.play(Indicate(table, color=GREEN), run_time=narration.duration)
             return data, table # Do nothing if already square
+
+        # --- Narration for the "Not Square" case ---
+        with self.narration(speech_service_id="en", text="Our matrix is not square. We must add dummy entries with zero cost to balance it.") as narration:
+            self.play(Indicate(table, color=RED), run_time=narration.duration)
 
         # 1. Determine the difference and what to add
         if num_rows > num_cols:
             # Add dummy columns
             diff = num_rows - num_cols
-            explanation = Tex(f"Adding {diff} dummy column(s) of zeros.").scale(0.7).next_to(table, DOWN)
+            diff_str = f"{diff} dummy column" if diff == 1 else f"{diff} dummy columns"
+            
+            # This is the text that will be spoken
+            explanation_str = f"Since we have {num_rows} rows but only {num_cols} columns, we will add {diff_str} to the right."
+            # This is the text that will be shown on screen
+            explanation = Tex(f"Adding {diff_str} of zeros.").scale(0.7).next_to(table, DOWN)
             
             new_data = [row + [0] * diff for row in data]
             
@@ -149,24 +192,32 @@ class AnimationHelpers:
             new_dim = num_rows
             row_labels = [Tex(str(i+1)) for i in range(new_dim)]
             col_labels = [Tex(str(chr(65+i))) for i in range(num_cols)] + \
-                         [Tex(f"Dummy {i+1}") for i in range(diff)]
+                         [Tex(f"Dummy {i+1}", color=YELLOW) for i in range(diff)]
+        
         else: # num_cols > num_rows
             # Add dummy rows
             diff = num_cols - num_rows
-            explanation = Tex(f"Adding {diff} dummy row(s) of zeros.").scale(0.7).next_to(table, DOWN)
+            diff_str = f"{diff} dummy row" if diff == 1 else f"{diff} dummy rows"
+
+            # This is the text that will be spoken
+            explanation_str = f"Since we have {num_cols} columns but only {num_rows} rows, we will add {diff_str} to the bottom."
+            # This is the text that will be shown on screen
+            explanation = Tex(f"Adding {diff_str} of zeros.").scale(0.7).next_to(table, DOWN)
             
             new_data = data + [[0] * num_cols for _ in range(diff)]
 
             # Generate new labels
             new_dim = num_cols
             row_labels = [Tex(str(i+1)) for i in range(num_rows)] + \
-                         [Tex(f"Dummy {i+1}") for i in range(diff)]
+                         [Tex(f"Dummy {i+1}", color=YELLOW) for i in range(diff)]
             col_labels = [Tex(str(chr(65+i))) for i in range(new_dim)]
 
-        self.play(Write(explanation))
-        self.wait(1)
+        # Narrate and show the explanation
+        with self.narration(speech_service_id="en", text=explanation_str) as narration:
+            self.play(Write(explanation), run_time=narration.duration)
+        self.wait(0.5)
 
-        # 2. Create a new, squared table from the new data and labels
+        # 2. Create a new, squared table
         new_table = IntegerTable(
             new_data,
             col_labels=col_labels,
@@ -176,28 +227,40 @@ class AnimationHelpers:
 
         # 3. Animate the transformation and clean up
         self.play(FadeOut(explanation))
-        self.wait(0.4)
-        self.play(TransformMatchingShapes(table, new_table))
-        self.wait(1)
-        # Wave animation for newly added elements
-        if num_rows > num_cols:
-            # Wave through new columns
-            for col_idx in range(num_cols, len(new_data[0])):
-                col_elements = VGroup(*[new_table.get_entries((i+2, col_idx+2)) for i in range(len(new_data))])
-                self.play(ApplyWave(col_elements), run_time=0.5)
-        else:
-            # Wave through new rows
-            for row_idx in range(num_rows, len(new_data)):
-                row_elements = VGroup(*[new_table.get_entries((row_idx+2, j+2)) for j in range(len(new_data[0]))])
-                self.play(ApplyWave(row_elements), run_time=1.5)
-        self.wait(1)
+        
+        # Narrate the transformation
+        with self.narration(speech_service_id="en", text="Let's create the new, balanced matrix. All new entries have a cost of zero.") as narration:
+            self.play(TransformMatchingShapes(table, new_table), run_time=narration.duration)
+        self.wait(0.75)
+        
+        # 4. Narrate the wave animation
+        with self.narration(speech_service_id="en", text="These are our new dummy entries.") as narration:
+            if num_rows > num_cols:
+                # Wave through new columns
+                for col_idx in range(num_cols, len(new_data[0])):
+                    col_elements = VGroup(*[new_table.get_entries((i+2, col_idx+2)) for i in range(len(new_data))])
+                    self.play(ApplyWave(col_elements), run_time=0.5)
+            else:
+                # Wave through new rows
+                for row_idx in range(num_rows, len(new_data)):
+                    row_elements = VGroup(*[new_table.get_entries((row_idx+2, j+2)) for j in range(len(new_data[0]))])
+                    self.play(ApplyWave(row_elements), run_time=1.0)
+        
+        self.wait(0.25)
+        
+        with self.narration(speech_service_id="en", text="Now that the matrix is square, we can proceed to the next step.") as narration:
+            self.wait(narration.duration)
+            
         return new_data, new_table
-
+    
     def animate_row_reduction(self, table, data, restrictions=None):
         """
         Animates row reduction using a two-table view and returns the new data and table.
         Takes a single table as input and creates the comparison view internally.
         """
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
         # --- 1. Setup the two-table view ---
         # The table on the left is a static reference copy.
         original_table = table.copy()
@@ -280,6 +343,9 @@ class AnimationHelpers:
         """
         Animates the column reduction process and returns the new data and table.
         """
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
         # Create a copy of the data to modify
         new_data = [row[:] for row in data]
         num_rows = len(new_data)
@@ -314,17 +380,19 @@ class AnimationHelpers:
 
             if has_zero:
                 # If a zero is present, the column is fine
-                self.play(highlight_rect.animate.set_color(GREEN))
-                self.wait(0.5)
+                with self.narration(speech_service_id="en", text = "this column contains a zero. Therefore, skipping this column") as narration:
+                    self.play(highlight_rect.animate.set_color(GREEN), run_time=narration.duration)
+                    self.wait(0.1)
             else:
+                with self.narration(speech_service_id="en", text = "this column has no zero. Therefore, reducing this column") as narration:
                 # If no zero, perform reduction
-                self.play(highlight_rect.animate.set_color(RED))
-                
+                    self.play(highlight_rect.animate.set_color(RED))
                 # Find the minimum value
                 min_entry = min(column_values)
                 min_row_index = column_values.index(min_entry)
                 min_cell = table.get_rows()[min_row_index + 1][j + 1]
-                self.play(Indicate(min_cell, color=ORANGE, scale_factor=1.2))
+                with self.narration(speech_service_id="en", text = f"minimum entry is {min_entry}. subtracting each entry of this column with {min_entry}") as narration:
+                    self.play(Indicate(min_cell, color=ORANGE, scale_factor=1.2))
                 
                 # Animate the subtraction for each cell in the column
                 animations = []
@@ -337,7 +405,8 @@ class AnimationHelpers:
                     animations.append(Transform(cell_to_change, new_mobject))
                 
                 self.play(AnimationGroup(*animations, lag_ratio=0.15))
-                self.play(highlight_rect.animate.set_color(GREEN)) # Show the column is now fixed
+                with self.narration(speech_service_id="en", text = "next column.") as narration:
+                    self.play(highlight_rect.animate.set_color(GREEN), run_time=narration.duration) # Show the column is now fixed
 
         # Clean up and return the final results
         self.play(FadeOut(highlight_rect))
@@ -352,6 +421,9 @@ class AnimationHelpers:
         
         Returns the VGroup of lines and the total number of lines drawn.
         """
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
         lines = VGroup()
         line_config = {"color": YELLOW, "stroke_width": 3, "stroke_opacity": 0.75}
         self.wait(0.5)
@@ -385,10 +457,9 @@ class AnimationHelpers:
                 **line_config
             )
             lines.add(line)
-            
-        self.play(Create(lines, lag_ratio=0.4))
-        self.wait(1)
-        
+        with self.narration(speech_service_id="en", text = f"number of lines required to cover all zeros is {len(lines)}") as narration:
+            self.play(Create(lines, lag_ratio=0.4))
+        self.wait(0.5)       
         return lines
     
     def animate_matrix_adjustment(self, table, data, covered_rows, covered_cols, lines):
@@ -396,6 +467,9 @@ class AnimationHelpers:
         Animates the matrix adjustment process by transforming individual cell entries
         in-place, using the user's preferred animation style.
         """
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
         # --- Step 1: Identify cell categories and find the minimum value ---
         new_data = [row[:] for row in data]
         n = len(data)
@@ -425,10 +499,10 @@ class AnimationHelpers:
         explanation1 = Tex("Find smallest ", f"uncovered value: {min_val}").scale(0.7).next_to(table, UP, buff=1.55)
         explanation1[1].set_color(BLUE)
         highlight_boxes = VGroup(*[SurroundingRectangle(cell, color=BLUE, buff=-0.15) for cell in uncovered_cells])
-
-        
-        self.play(Write(explanation1))
-        self.play(Create(highlight_boxes))
+        with self.narration(speech_service_id="en", text = "Find smallest value which is not covered by the lines") as narration:
+            self.play(Write(explanation1), run_time=narration.duration)
+        with self.narration(speech_service_id="en", text = f"smallest value is equal to {min_val}") as narration:
+            self.play(Create(highlight_boxes))
         min_val_location = None
         for r in range(len(data)):
             for c in range(len(data[0])):
@@ -448,7 +522,8 @@ class AnimationHelpers:
         explanation2 = Tex(f"Subtract {min_val} from ", "uncovered cells ", rf"\\add {min_val} to ", "intersection cells.").scale(0.7).next_to(explanation1, DOWN)
         explanation2[1].set_color(BLUE)
         explanation2[3].set_color(PURPLE)
-        self.play(Write(explanation2))
+        with self.narration(speech_service_id="en", text = f"Subtract {min_val} from uncovered cells, and add {min_val} to intersection cells.") as narration:
+            self.play(Write(explanation2), run_time=narration.duration)
         self.wait(1.5)
 
         highlight_intersection = VGroup(*[SurroundingRectangle(cell, color=PURPLE, buff=-0.15) for cell in intersection_cells])
@@ -487,11 +562,14 @@ class AnimationHelpers:
         
         return new_data, table
     
-    def animate_final_assignment(self, table, data, header, restrictions=None):
+    def animate_final_assignment(self, table, data, header, original_data, restrictions=None):
         """
         Animates the assignment process using a simple, sequential scan of rows
         and then columns, including cross-out animations.
         """
+        self.set_speech_services(
+            en=KokoroService(voice="af_heart", lang_code="en-us")
+        )
         # --- Phase 1: Setup ---
         explanation_text = Tex("Starting Assignment Process...").scale(0.7).next_to(header, DOWN, buff=0.1)
         self.play(Write(explanation_text))
@@ -508,8 +586,9 @@ class AnimationHelpers:
         n = len(data)
 
         # --- Phase 2: Row Scan ---
-        new_text = Tex("Scanning rows for unique zeros...").scale(0.7).next_to(header, DOWN, buff=0.1)
-        self.play(ReplacementTransform(explanation_text, new_text))
+        new_text = Tex("Scanning Rows for unique zeros...").scale(0.7).next_to(header, DOWN, buff=0.1)
+        with self.narration(speech_service_id="en", text = f"Scanning Rows for unique zeros") as narration:
+            self.play(ReplacementTransform(explanation_text, new_text))
         explanation_text = new_text
 
         for r in range(n):
@@ -520,7 +599,8 @@ class AnimationHelpers:
                 found_row = Tex(f"Found a unique zero at row {r_assign+1}").scale(0.7).next_to(new_text, DOWN, buff=0.25)
                 cell = table.get_cell((r_assign + 2, c_assign + 2))
                 circle = Circle(color=GREEN, stroke_width=3).surround(cell).scale(0.5)
-                self.play(Write(found_row))
+                with self.narration(speech_service_id="en", text = f"Found a unique zero at row {r_assign+1}") as narration:
+                    self.play(Write(found_row), run_time=narration.duration)
                 self.wait(0.5)
                 self.play(Create(circle))
                 
@@ -533,7 +613,8 @@ class AnimationHelpers:
                 if zeros_to_cross:
                     cross_text = Tex(f"Crossing out other zeros in the same column and row").scale(0.7).next_to(found_row, DOWN, buff=0.1)
                     crosses = VGroup(*[Cross(table.get_cell((rc[0]+2, rc[1]+2)), stroke_width=3, scale_factor=0.75) for rc in zeros_to_cross])
-                    self.play(Write(cross_text))
+                    with self.narration(speech_service_id="en", text = "Crossing out other zeros in the same column and row") as narration:
+                        self.play(Write(cross_text))
                     self.wait(0.5)
                     self.play(Create(crosses))
                     self.play(FadeOut(found_row))
@@ -543,14 +624,16 @@ class AnimationHelpers:
                 
                 else:
                     no_cross_text = Tex(f"No other zeros to cross out in row {r_assign+1} and column {c_assign+1}").scale(0.7).next_to(found_row, DOWN, buff=0.1)
-                    self.play(Write(no_cross_text))
+                    with self.narration(speech_service_id="en", text = f"No other zeros to cross out in row {r_assign+1} and column {c_assign+1}") as narration:
+                        self.play(Write(no_cross_text), run_time=narration.duration)
                     self.wait(0.75)
                     self.play(FadeOut(found_row))
                     self.play(FadeOut(no_cross_text))
         
         # --- Phase 3: Column Scan ---
         new_text = Tex("Scanning columns for unique zeros...").scale(0.7).next_to(header, DOWN, buff=0.1)
-        self.play(ReplacementTransform(explanation_text, new_text))
+        with self.narration(speech_service_id="en", text = "Scanning columns for unique zeros") as narration:
+            self.play(ReplacementTransform(explanation_text, new_text))
         explanation_text = new_text
         
         for c in range(n):
@@ -559,7 +642,8 @@ class AnimationHelpers:
                 (r_assign, c_assign) = zeros_in_col.pop()
 
                 found_col = Tex(f"Found a unique zero at column {chr(c_assign+65)}").scale(0.7).next_to(new_text, DOWN, buff=0.25)
-                self.play(Write(found_col))
+                with self.narration(speech_service_id="en", text = f"Found a unique zero at column {chr(c_assign+65)}") as narration:
+                    self.play(Write(found_col), run_time=narration.duration)
                 self.wait(0.5)
                 cell = table.get_cell((r_assign + 2, c_assign + 2))
                 circle = Circle(color=GREEN, stroke_width=3).surround(cell).scale(0.5)
@@ -572,8 +656,9 @@ class AnimationHelpers:
                 # Cross out other zeros in the assigned row
                 zeros_to_cross = {loc for loc in available_zeros if loc[0] == r_assign}
                 if zeros_to_cross:
-                    cross_text = Tex(f"Crossing out other zeros in the same row and column").scale(0.7).next_to(found_col, DOWN, buff=0.1)
-                    self.play(Write(cross_text))
+                    cross_text = Tex(f"Crossing out other zeros in the same column and row").scale(0.7).next_to(found_col, DOWN, buff=0.1)
+                    with self.narration(speech_service_id="en", text = "Crossing out other zeros in the same column and row") as narration:
+                        self.play(Write(cross_text))
                     self.wait(0.5)
                     self.play(FadeOut(found_col))
                     self.play(FadeOut(cross_text))
@@ -583,15 +668,18 @@ class AnimationHelpers:
                     available_zeros -= zeros_to_cross
                 else:
                     no_cross_text = Tex(f"No other zeros to cross out in row {r_assign+1} and column {chr(c_assign+65)}").scale(0.7).next_to(found_col, DOWN, buff=0.1)
-                    self.play(Write(no_cross_text))
+
+                    with self.narration(speech_service_id="en", text = f"No other zeros to cross out in row {r_assign+1} and column {chr(c_assign+65)}") as narration:
+                        self.play(Write(no_cross_text), run_time=narration.duration)
                     self.wait(0.75)
                     self.play(FadeOut(found_col))
                     self.play(FadeOut(no_cross_text))
 
         # --- Phase 4: Assign any remaining zeros (for cases with multiple solutions) ---
         if len(assignments) < n and available_zeros:
-            new_text = Tex(r" As only one zero is left \\ Assigning remaining zero...").scale(0.7).next_to(header, DOWN, buff=0.5)
-            self.play(ReplacementTransform(explanation_text, new_text))
+            new_text = Tex(r"As only one zero is left \\ Assigning remaining zero...").scale(0.7).next_to(header, DOWN, buff=0.5)
+            with self.narration(speech_service_id="en", text = "As only one zero is left Assigning remaining zero.") as narration:
+                self.play(ReplacementTransform(explanation_text, new_text))
             explanation_text = new_text
             
             assigned_rows = {a[0] for a in assignments}
@@ -609,24 +697,51 @@ class AnimationHelpers:
 
         # --- Phase 5: Final Result ---
         new_text = Tex("Optimal Assignment Found!").scale(0.7).move_to(explanation_text)
-        self.play(ReplacementTransform(explanation_text, new_text))
+        with self.narration(speech_service_id="en", text = "Optimal Assignment Found!") as narration:
+            self.play(ReplacementTransform(explanation_text, new_text))
         if len(crossed_out_marks) > 0:
             self.play(FadeOut(crossed_out_marks))
         self.wait(2)
+        # --- NEW: Step 2.5 - Reveal Original Costs ---
+        reveal_text = Tex("Revealing original costs of assignment:").scale(0.7).next_to(table, DOWN, buff=0.2)
+        self.play(Write(reveal_text))
+        animations = []
+        source_cells_for_cost = VGroup() # This will store the new Integer mobjects
+        sorted_assignments = sorted(assignments, key=lambda x: x[0])
 
-        return assignments, assigned_circles
-    def animate_assignment_summary(self, table, original_data, assignments, circles):
+        for r, c in sorted_assignments:
+            # Get the cell entry we need to replace (e.g., the '0')
+            entry_to_replace = table.get_entries((r + 2, c + 2))
+            
+            # Get the original cost from the initial data
+            original_cost = original_data[r][c]
+            
+            # Create a new Integer mobject for the original cost
+            new_mobject = Integer(original_cost, color=BLUE).move_to(entry_to_replace)
+            
+            # Add the animation to the list
+            animations.append(Transform(entry_to_replace, new_mobject))
+            
+            # Add the new mobject to our VGroup for the copy animation later
+            source_cells_for_cost.add(new_mobject)
+
+        # Play the transformation and flash the circles to draw attention
+        self.play(AnimationGroup(*animations))
+        self.play(FadeOut(reveal_text))
+        self.wait(0.5)
+        # --- END OF NEW BLOCK ---
+        return assignments, source_cells_for_cost
+    
+    def animate_assignment_summary(self, table, original_data, assignments, source_cells_for_cost):
         """
-        Animates a final summary, showing the assignments in text form
-        and calculating the total cost from the original matrix.
+        Animates a final summary, reveals the original costs in the table,
+        and calculates the total cost.
         """
-        # 1. Create the text for the final assignment list
+        # 1. Create the text for the final assignment list (Same as your code)
         summary_header = Tex("Final Assignment:").scale(0.8)
         summary_lines = VGroup()
         
-        # Sort assignments by row for a clean 1, 2, 3... order
         sorted_assignments = sorted(assignments, key=lambda x: x[0])
-
         num_rows = len(original_data)
         num_cols = len(original_data[0]) if num_rows > 0 else 0
         row_labels_text = [str(i + 1) for i in range(num_rows)]
@@ -639,14 +754,14 @@ class AnimationHelpers:
         summary_lines.arrange(DOWN, buff=0.2, aligned_edge=LEFT)
         summary_vgroup = VGroup(summary_header, summary_lines).arrange(DOWN, buff=0.4).to_edge(RIGHT, buff=0.5).shift(DOWN*0.5)
         
-        # 2. Add Summary Group
+        # 2. Animate the summary appearing (Same as your code)
         self.play(Write(summary_vgroup))
         self.wait(1)
 
-        # 3. Animate the cost calculation
+
+        # 3. Animate the cost calculation (Modified to use TransformFromCopy)
         cost_header = Tex("Optimal Cost:", font_size=40).next_to(table.get_bottom(), DOWN, buff=0.1, aligned_edge=LEFT).to_edge(LEFT, buff=0.5)
         
-        # Get the costs from the ORIGINAL data matrix
         costs = [original_data[r][c] for r, c in assignments]
         cost_sum_str = " + ".join(map(str, costs))
         
@@ -658,7 +773,11 @@ class AnimationHelpers:
 
         self.play(Write(cost_header))
         self.wait(0.5)
-        self.play(Write(cost_sum_tex))
+        
+        # --- MODIFIED: Use TransformFromCopy for a better animation ---
+        self.play(TransformFromCopy(source_cells_for_cost, cost_sum_tex))
+        
         self.wait(0.5)
-        self.play(Write(total_cost_tex))
+        with self.narration(speech_service_id="en", text = f"Optimal Cost is {sum(costs)} ") as narration:
+            self.play(Write(total_cost_tex), run_time=narration.duration)
         self.wait(2)

@@ -1,5 +1,6 @@
 from manim import *
 import copy
+import os
 from MODI_solver import find_loop, adjust_allocations # We will need these later
 
 # --- Manim Scene Configuration ---
@@ -14,7 +15,6 @@ class AnimationHelpers:
     """
     A class to hold all the animation helper functions for the MODI method.
     """
-    
     def create_table_with_allocations(self, scene, costs, supply, demand, initial_alloc, main_header):
         """
         Step 1: Creates the main table, highlights, u/v lines,
@@ -77,7 +77,8 @@ class AnimationHelpers:
                     table.add_highlighted_cell((r+2, c+2), GREEN, fill_opacity=0.45)
         
         # Animate the table (and its highlights) fading in
-        scene.play(FadeIn(table))
+        with scene.narration(speech_service_id="en", text = "This is the initial solution we got from vogels approximation method") as narration:
+            scene.play(FadeIn(table), run_time=narration.duration)
         
         # --- 3. Create Persistent Allocation Mobjects ---
         # These are the purple numbers in the corners.
@@ -114,7 +115,6 @@ class AnimationHelpers:
         scene.play(Write(alloc_mobjects_vgroup))
         table_alloc = VGroup(table, alloc_mobjects_vgroup)
         scene.wait(1)
-        
         # Return the essential "state" objects for the next steps
         return table, alloc_mobject_map, table_alloc
     
@@ -137,7 +137,8 @@ class AnimationHelpers:
         # --- 1. Title and Setup ---
         step1_title = Tex("Step 1: Check for Degeneracy").scale(0.65)
         step1_title.next_to(main_header, DOWN, buff=0.1).set_color(LOGO_BLUE)
-        scene.play(Write(step1_title))
+        with scene.narration(speech_service_id="en", text = "Step one, check for degeneracy") as narration: 
+            scene.play(Write(step1_title))
 
         # --- 2. Get Allocation Counts ---
         num_sources = len(costs)
@@ -177,6 +178,10 @@ class AnimationHelpers:
         formula = MathTex(r"m + n - 1").scale(0.7)
         formula.next_to(counter_text, DOWN, buff=0.2)
         scene.play(Write(formula))
+        with scene.narration(speech_service_id="en", text = "M is number of rows") as narration:
+            scene.play(Indicate(formula[0][0]))
+        with scene.narration(speech_service_id="en", text = "N is number of columns") as narration:
+            scene.play(Indicate(formula[0][2]))
         scene.wait(1)
 
         formula_sub = MathTex(f"{num_sources} + {num_destinations} - 1 = {required_allocations}").scale(0.7)
@@ -190,14 +195,17 @@ class AnimationHelpers:
             result_grp = VGroup(
                 MathTex(f"{num_allocations} = {required_allocations}", color=GREEN),
                 Tex("Solution is Non-Degenerate", color=GREEN)).scale(0.7).arrange(DOWN)
+            result_narration = "As M plus N minus 1 is equal to number of allocations, the solution is non Degenerate"
         else:
             is_degenerate = True # Mark as degenerate
             result_grp = VGroup(
                 MathTex(f"{num_allocations} \\neq {required_allocations}", color=RED),
                 Tex("Solution is Degenerate", color=RED)).scale(0.7).arrange(DOWN)
+            result_narration = "As M plus N minus 1 is not equal to number of allocations, the solution is Degenerate"
 
         result_grp.next_to(formula_sub, DOWN, buff=0.2).shift(LEFT*2)
-        scene.play(Write(result_grp))
+        with scene.narration(speech_service_id="en", text = result_narration) as narration:
+            scene.play(Write(result_grp), run_time=narration.duration)
         scene.wait(2)
 
         # --- 6. Cleanup and Return ---
@@ -242,8 +250,9 @@ class AnimationHelpers:
         
         scene.play(Write(step1a_title))
         scene.play(Write(problem_text))
-        scene.play(Write(fix_text))
-        scene.wait(2.5)
+        with scene.narration(speech_service_id="en", text = "As solution is Degenerate, we have to add a small allacation epsilon to the unallocated cell with minimum cost") as narration:
+            scene.play(Write(fix_text), run_time=narration.duration)
+        scene.wait(1.5)
 
         # --- 2. Find the min-cost unallocated cell ---
         min_cost = float('inf')
@@ -290,11 +299,12 @@ class AnimationHelpers:
         # Create a new map that includes the new mobject
         new_alloc_map = alloc_mobject_map.copy()
         new_alloc_map[(r, c)] = epsilon_mobject
-        
+
         # --- 6. Cleanup and Return ---
         text_to_fade = VGroup(step1a_title, problem_text, fix_text)
         scene.play(FadeOut(text_to_fade))
         
+
         # Return the updated state
         return new_alloc_logic, new_alloc_map, epsilon_mobject
 
@@ -333,8 +343,7 @@ class AnimationHelpers:
 
         return row_lines, col_lines
     
-    def animate_uv_calculation(self, scene, table, costs, initial_alloc, alloc_mobject_map, 
-                               row_lines, col_lines, main_header):
+    def animate_uv_calculation(self, scene, table, costs, initial_alloc, alloc_mobject_map, row_lines, col_lines, main_header):
         """
         Step 3: Animates the calculation of u_i and v_j values.
 
@@ -356,7 +365,8 @@ class AnimationHelpers:
         # --- 1. Title and Setup ---
         step2_title = Tex("Step 2: Calculate $u_i$ and $v_j$").scale(0.65)
         step2_title.next_to(main_header, DOWN, buff=0.1).set_color(LOGO_BLUE)
-        scene.play(Write(step2_title))
+        with scene.narration(speech_service_id="en", text = "Step two, calculate u and v") as narration:
+            scene.play(Write(step2_title))
         
         num_sources = len(costs)
         num_destinations = len(costs[0])
@@ -367,9 +377,10 @@ class AnimationHelpers:
         
         start_rule = Tex(r"Start by setting $u_A = 0$").scale(0.6)
         start_rule.next_to(formula_text, DOWN, buff=0.2)
-        
-        scene.play(Write(formula_text))
-        scene.play(Write(start_rule))
+        with scene.narration(speech_service_id="en", text = "The cost at allocated cell must be sum of corresponding u and v for that cell.") as narration:
+            scene.play(Write(formula_text), run_time=narration.duration)
+        with scene.narration(speech_service_id="en", text = "Start by setting first u as zero") as narration:
+            scene.play(Write(start_rule), run_time=narration.duration)
 
         # --- 3. Initialize Calculation Variables ---
         u_vals = [None] * num_sources
@@ -474,7 +485,7 @@ class AnimationHelpers:
             if not made_progress or loops_done > (num_sources + num_destinations):
                 # Safeguard to prevent infinite loop
                 break
-        
+
         # Cleanup the explanation text
         scene.play(FadeOut(formula_text), FadeOut(start_rule))
         
@@ -510,12 +521,13 @@ class AnimationHelpers:
         
         # This VGroup will show the step-by-step calculation "live"
         temp_calc_group = VGroup().scale(0.7).next_to(formula, DOWN, buff=0.25)
-
+        with scene.narration(speech_service_id="en", text = "Step three, calculate opportunity costs for all of the unallocated cells") as narration:
+            scene.play(Write(step3_title),run_time=narration.duration)
         scene.play(
-            Write(step3_title),
-            Write(formula_text),
-            Write(formula)
+            Write(formula_text)
         )
+        with scene.narration(speech_service_id="en", text = "opportunity cost for cell at i and j is equal to u of i plus v of j minus cost at that cell i and j") as narration:
+            scene.play(Write(formula), run_time=narration.duration)
         scene.wait(2)
 
         # Tracking variables
@@ -582,6 +594,7 @@ class AnimationHelpers:
                         
         # --- 3. Clean up and return ---
         text_to_fade = VGroup(step3_title, formula_text, formula, temp_calc_group)
+
         scene.play(FadeOut(text_to_fade))
         scene.wait(1)
 
@@ -594,11 +607,7 @@ class AnimationHelpers:
             entering_cell_mobject
         )
     
-    def animate_check_optimality(self, scene, table, main_header, 
-                                cost_mobjects, 
-                                most_positive_cost, 
-                                entering_cell_coords, 
-                                entering_cell_mobject):
+    def animate_check_optimality(self, scene, table, main_header, cost_mobjects, most_positive_cost, entering_cell_coords, entering_cell_mobject):
         """
         Step 5: Animates the optimality check.
         Checks if all d_ij <= 0.
@@ -623,8 +632,8 @@ class AnimationHelpers:
         rule_text = MathTex(r"\text{Optimality Condition: }\text{All } d_{ij} \le 0").scale(0.7)
         # Position this relative to the list of costs on the right
         rule_text.next_to(cost_mobjects, UP, buff=0.3).align_to(cost_mobjects, LEFT)
-        
-        scene.play(Write(step4_title), Write(rule_text))
+        with scene.narration(speech_service_id="en", text = "Step four, check for optimality. The condition is, all opportunity costs should be less than or equal to zero") as narration:
+            scene.play(Write(step4_title), Write(rule_text), run_time=narration.duration)
         scene.wait(2)
 
         # --- 2. Check the condition ---
@@ -638,9 +647,10 @@ class AnimationHelpers:
             final_text.next_to(result_text, DOWN, buff=0.2).align_to(rule_text, LEFT)
             
             scene.play(Write(result_text))
-            scene.play(Write(final_text))
+            with scene.narration(speech_service_id="en", text = "The Solution is optimal as all opportunity costs are less than or equal to zero") as narration:
+                scene.play(Write(final_text))
             scene.wait(3)
-            
+
             # Cleanup all text on the right
             scene.play(
                 FadeOut(step4_title),
@@ -660,14 +670,16 @@ class AnimationHelpers:
             final_text.next_to(result_text, DOWN, buff=0.2).align_to(rule_text, LEFT)
             
             scene.play(Write(result_text))
-            scene.play(Write(final_text))
+            with scene.narration(speech_service_id="en", text = "The Solution is not optimal as not all  opportunity costs are less than or equal to zero") as narration:
+                scene.play(Write(final_text), run_time=narration.duration)
             scene.wait(1.5)
             
             # Highlight the entering cell
             select_text = Tex("Select cell with most positive $d_{ij}$ as entering cell.").scale(0.7)
             select_text.next_to(final_text, DOWN, buff=0.2).shift(LEFT*1.5)
-            scene.play(Write(select_text))
-            
+            with scene.narration(speech_service_id="en", text = "Select the cell with maximum opportunity cost as entering cell.") as narration:
+                scene.play(Write(select_text), run_time=narration.duration)
+
             # Animate indication of the text mobject in the list
             scene.play(Indicate(entering_cell_mobject, color=YELLOW, scale_factor=1.2))
             
@@ -723,7 +735,8 @@ class AnimationHelpers:
         # --- 1. Title and Rules ---
         step5_title = Tex("Step 5: Identify Closed Loop").scale(0.65)
         step5_title.next_to(main_header, DOWN, buff=0.1).set_color(LOGO_BLUE)
-        scene.play(Write(step5_title))
+        with scene.narration(speech_service_id="en", text = "Step five, find a  closed Loop") as narration:
+            scene.play(Write(step5_title), run_time=narration.duration)
 
         # Create the rules text on the right
         rules_group = VGroup(
@@ -734,7 +747,8 @@ class AnimationHelpers:
             Tex(r"4. End at the starting cell.")
         ).scale(0.6).shift(UP*1.0).arrange(DOWN, buff=0.2, aligned_edge=LEFT)
         
-        scene.play(Write(rules_group))
+        with scene.narration(speech_service_id="en", text = "Loop Rules, Start at the entering cell. can only move horizontally or vertically. Turn only at allocated cells. End at the starting cell.") as narration:
+            scene.play(Write(rules_group), run_time=narration.duration)
         scene.play(rules_group.animate.to_edge(RIGHT, buff=0.25))
         scene.wait(2) # Give time to read rules
 
@@ -775,7 +789,9 @@ class AnimationHelpers:
         # --- 4. Animate Adding Signs ---
         sign_text = Tex(r"Assign alternating $+/-$ signs, \\ starting with $+$ at the entering cell.").scale(0.6)
         sign_text.next_to(rules_group, DOWN, buff=0.3).shift(LEFT * 0.75)
-        scene.play(Write(sign_text))
+        with scene.narration(speech_service_id="en", text = "Assign alternating positive and negative signs, starting with positive at the entering cell.") as narration:
+            scene.play(Write(sign_text))
+        
         scene.wait(1)
 
         sign_mobjects = VGroup()
@@ -798,6 +814,7 @@ class AnimationHelpers:
             scene.play(FadeIn(sign, scale=0.5), run_time=0.25)
 
         scene.wait(2)
+
         scene.play(FadeOut(
             step5_title, 
             rules_group, 
@@ -835,7 +852,9 @@ class AnimationHelpers:
         # --- 1. Title ---
         step6_title = Tex("Step 6: Adjust Allocations").scale(0.65)
         step6_title.next_to(main_header, DOWN, buff=0.1).set_color(LOGO_BLUE)
-        scene.play(Write(step6_title))
+        with scene.narration(speech_service_id="en", text = "Step six, Adjust Allocations") as narration:
+            scene.play(Write(step6_title), run_time=narration.duration)
+                
         
         # --- 2. Logic Call (Using Imported Function) ---
         (
@@ -860,7 +879,8 @@ class AnimationHelpers:
         theta_text_group.add(theta_text_1, theta_text_2).arrange(DOWN, buff=0.2, aligned_edge=LEFT)
         theta_text_group.to_edge(RIGHT, buff=0.45).shift(UP*1.0)
 
-        scene.play(Write(theta_text_1))
+        with scene.narration(speech_service_id="en", text = "Find cell with lowest allocation amongst the negative assigned cell, lets call it theta") as narration:
+            scene.play(Write(theta_text_1), run_time=narration.duration)
         
         # Flash the minus cells' allocation mobjects
         flash_anims = []
@@ -869,14 +889,15 @@ class AnimationHelpers:
                 flash_anims.append(Flash(alloc_mobject_map[(r, c)], color=RED, time_width=0.5))
         if flash_anims:
             scene.play(*flash_anims)
-        
-        scene.play(Write(theta_text_2))
-        scene.wait(1.5)
+        with scene.narration(speech_service_id="en", text = f"theta is equal to {theta_str}") as narration:
+            scene.play(Write(theta_text_2))
+        scene.wait(0.5)
 
         # --- 4. Animate Allocation Mobject Changes ---
         adj_text = Tex(r"Add $\theta$ to '$+$' cells, subtract $\theta$ from '$-$' cells.").scale(0.6)
         adj_text.next_to(theta_text_group, DOWN, buff=0.3)
-        scene.play(Write(adj_text))
+        with scene.narration(speech_service_id="en", text = "Add theta to positive assigned cells, subtract theta from negative assigned cells.") as narration:
+            scene.play(Write(adj_text), run_time=narration.duration)
         
         animation_list = []
         new_alloc_map = alloc_mobject_map.copy() # Copy the old map
@@ -916,7 +937,6 @@ class AnimationHelpers:
         # Run all allocation change animations
         scene.play(*animation_list)
         scene.wait(1)
-
         # --- 6. Cleanup ---
         scene.play(
             FadeOut(step6_title),

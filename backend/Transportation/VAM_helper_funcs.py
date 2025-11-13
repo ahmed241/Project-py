@@ -1,6 +1,7 @@
 from manim import *
 import copy
 
+
 class AnimationHelpers:
     """
     Helper functions for Transportation Problem (VAM + MODI) visualization.
@@ -38,11 +39,6 @@ class AnimationHelpers:
             v_buff=0.8
         ).scale(0.5).to_edge(LEFT, buff=0.1)
         
-        # Animate creation
-        self.play(FadeIn(table))
-        self.play(table.animate.shift(DOWN*0.25))
-        self.wait(1)
-        
         return table
 
     def animate_balance_problem(self, table, costs, supply, demand):
@@ -61,20 +57,23 @@ class AnimationHelpers:
         if total_supply == total_demand:
             # --- Problem is already balanced ---
             balanced_text = Tex("Total Supply = Total Demand", "Problem is Balanced", color=GREEN).scale(0.7).to_edge(UP, buff=1)
-            self.play(Write(balanced_text))
+            with self.narration(speech_service_id="en", text = "As total supply is equal to total demand. Problem is balanced") as narration:
+                self.play(Write(balanced_text), run_time=narration.duration)
             self.wait(2)
             self.play(FadeOut(balanced_text))
             return table, new_costs, new_supply, new_demand
 
         # --- Problem is Unbalanced ---
-        unbalanced_text = Tex(r"Total Supply \\neq Total Demand", "Problem is Unbalanced", color=YELLOW).scale(0.7).to_edge(UP, buff=1)
-        self.play(Write(unbalanced_text))
+        unbalanced_text = Tex(r"Total Supply $\neq$ Total Demand", " Problem is Unbalanced", color=YELLOW).scale(0.7).to_edge(UP, buff=1)
+        with self.narration(speech_service_id="en", text = "As total supply is not equal to total demand. Problem is unbalanced") as narration:
+            self.play(Write(unbalanced_text), run_time=narration.duration)
         self.wait(2)
 
         if total_supply > total_demand:
             # --- Add Dummy Column ---
             balancing_text = Tex("Adding a Dummy Destination to absorb excess supply.", color=BLUE).scale(0.7).next_to(unbalanced_text, DOWN)
-            self.play(Write(balancing_text))
+            with self.narration(speech_service_id="en", text = "Adding a Dummy Destination to absorb excess supply.") as narration:
+                self.play(Write(balancing_text), run_time=narration.duration)
 
             difference = total_supply - total_demand
             new_demand.append(difference)
@@ -82,14 +81,14 @@ class AnimationHelpers:
                 row.append(0)
 
             # Re-create the table with new dimensions
-            new_table = self.create_transportation_table(new_costs, new_supply, new_demand)
+            new_table = AnimationHelpers.create_transportation_table(self, new_costs, new_supply, new_demand)
             new_table.move_to(table.get_center()) # Position it where the old one was
 
+            self.play(TransformMatchingShapes(table, new_table))
+
             self.play(
-                FadeOut(table),
                 FadeOut(unbalanced_text),
-                FadeOut(balancing_text),
-                Create(new_table)
+                FadeOut(balancing_text)
             )
             
             # Highlight the new dummy column
@@ -106,21 +105,21 @@ class AnimationHelpers:
         else: # demand > supply
             # --- Add Dummy Row ---
             balancing_text = Tex("Adding a Dummy Source to meet extra demand.", color=BLUE).scale(0.7).next_to(unbalanced_text, DOWN)
-            self.play(Write(balancing_text))
-
+            with self.narration(speech_service_id="en", text = "Adding a Dummy Source to meet extra demand.") as narration:
+                self.play(Write(balancing_text), run_time=narration.duration)
             difference = total_demand - total_supply
             new_supply.append(difference)
             new_costs.append([0] * len(new_demand))
             
             # Re-create the table with new dimensions
-            new_table = self.create_transportation_table(new_costs, new_supply, new_demand)
+            new_table = AnimationHelpers.create_transportation_table(self, new_costs, new_supply, new_demand)
             new_table.move_to(table.get_center())
 
+            self.play(TransformMatchingShapes(table, new_table))
+
             self.play(
-                FadeOut(table),
                 FadeOut(unbalanced_text),
-                FadeOut(balancing_text),
-                Create(new_table)
+                FadeOut(balancing_text)
             )
 
             # Highlight the new dummy row
@@ -166,8 +165,8 @@ class AnimationHelpers:
             Create(col_lines)
         )
         self.wait(1)
-        outer_horizontal_line = table.get_horizontal_lines()[-1].copy().set_stroke(WHITE, 4).move_to(table.get_bottom())
-        outer_vertical_line = table.get_vertical_lines()[-1].copy().set_stroke(WHITE, 4).move_to(table.get_right())
+        outer_horizontal_line = table.get_horizontal_lines()[-1].copy().set_stroke(WHITE, 4).move_to(row_lines[0].get_bottom())
+        outer_vertical_line = table.get_vertical_lines()[-1].copy().set_stroke(WHITE, 4).move_to(col_lines[0].get_right())
         self.play(
             Create(outer_horizontal_line),
             Create(outer_vertical_line)
@@ -183,8 +182,10 @@ class AnimationHelpers:
             "Row Penalty = Difference between\\\\two smallest costs in the row",
             color=YELLOW
         ).scale(0.6).next_to(step_header, DOWN, buff=0.25).shift(LEFT*4)
+        
         if iteration == 1:
-            self.play(Write(explanation))
+            with self.narration(speech_service_id="en", text = "Row Penalty = Difference between two smallest costs in the row") as narration:
+                self.play(Write(explanation), run_time=narration.duration)
             self.wait(1)
         
         penalty_values = []  # Store penalty values and their indices
@@ -204,7 +205,7 @@ class AnimationHelpers:
             valid_costs = [row_costs[j] for j in range(len(row_costs)) if j not in satisfied_cols]
             
             if len(valid_costs) < 2:
-                # Only one valid cost - use it as penalty
+                # Only one valid cost use it as it is penalty
                 penalty = valid_costs[0]
                 penalty_text = Integer(penalty, color=YELLOW).scale(0.75)
                 penalty_text.next_to(row_penalty_positions[i], DOWN, buff=0.2)
@@ -233,7 +234,8 @@ class AnimationHelpers:
             if iteration < 2:
                 calc_text = Tex(f"{min2} - {min1} = {penalty}", color=YELLOW).scale(0.5)
                 calc_text.next_to(row_penalty_positions[i], DOWN, buff=0.2).shift(LEFT*0.1)
-                self.play(Write(calc_text), run_time=0.4)
+                with self.narration(speech_service_id="en", text = f"{min2} minus {min1} is equal to {penalty}") as narration:
+                    self.play(Write(calc_text), run_time=narration.duration)
                 self.wait(1)
             
                 # Place penalty value at the extended line position
@@ -276,8 +278,8 @@ class AnimationHelpers:
                 "Column Penalty = Difference between\\\\two smallest costs in the column",
                 color=YELLOW
             ).scale(0.6).next_to(step_header, DOWN, buff=0.25).shift(LEFT*4)
-            
-            self.play(Write(explanation))
+            with self.narration(speech_service_id="en", text = "Column Penalty = Difference between two smallest costs in the column") as narration:
+                self.play(Write(explanation), run_time=narration.duration)
             self.wait(1)
         
         num_destinations = len(costs[0])
@@ -327,7 +329,8 @@ class AnimationHelpers:
             if iteration < 2:
                 calc_text = Tex(f"{min2} - {min1} = {penalty}", color=YELLOW).scale(0.5)
                 calc_text.next_to(col_penalty_positions[j], RIGHT, buff=0.2).shift(LEFT*0.1 + UP*0.2)
-                self.play(Write(calc_text), run_time=0.4)
+                with self.narration(speech_service_id="en", text = f"{min2} minus {min1} is equal to {penalty}") as narration:
+                    self.play(Write(calc_text), run_time=narration.duration)
                 self.wait(1)
                 
                 # Place penalty value at the extended line position
@@ -341,7 +344,7 @@ class AnimationHelpers:
                 )
             else:
                 penalty_text = Integer(penalty, color=YELLOW).scale(0.75)
-                penalty_text.next_to(col_penalty_positions[j], RIGHT, buff=0.2)
+                penalty_text.next_to(col_penalty_positions[j], RIGHT, buff=0.2).shift(UP*0.35)
                 self.play(
                     Write(penalty_text),
                     FadeOut(col_highlight),
@@ -373,7 +376,8 @@ class AnimationHelpers:
             max_penalty_val = max(p[0] for p in all_penalties)
 
         explanation = Tex(f"The highest penalty is {max_penalty_val}", color=ORANGE).scale(0.7).to_edge(UP, buff=1.0)
-        self.play(Write(explanation))
+        with self.narration(speech_service_id="en", text = f"The highest penalty is {max_penalty_val}") as narration:
+            self.play(Write(explanation), run_time=narration.duration)
 
         # 2. Highlight all penalties that match the max value
         highlights = VGroup()
@@ -385,6 +389,7 @@ class AnimationHelpers:
                 target_text = col_penalty_texts[index]
             highlight_box = SurroundingRectangle(target_text, color=ORANGE, buff=0.15)
             highlights.add(highlight_box)
+        
         self.play(Create(highlights))
         self.wait(1)
 
@@ -393,7 +398,8 @@ class AnimationHelpers:
         # 3. If there's a tie, evaluate candidates. Otherwise, just pick the only one.
         if len(tied_penalties) > 1:
             tie_text = Tex("Tie in max penalty!", " Evaluating options...", color=YELLOW).scale(0.7).next_to(explanation, DOWN)
-            self.play(Write(tie_text))
+            with self.narration(speech_service_id="en", text = f"The Highest Penalty is occurs {len(tied_penalties)} times") as narration:
+                self.play(Write(tie_text))
             self.wait(1)
 
             candidates = []
@@ -420,7 +426,6 @@ class AnimationHelpers:
                         if row_idx not in satisfied_rows and row[p_idx] < temp_min_cost:
                             temp_min_cost = row[p_idx]
                             temp_i, temp_j = row_idx, p_idx
-                
 
                 possible_alloc = min(supply_left[temp_i], demand_left[temp_j])
                 
@@ -433,6 +438,7 @@ class AnimationHelpers:
                 eval_text.next_to(last_eval_text, DOWN, buff=0.2).align_to(eval_title, LEFT)
                 
                 temp_highlights.add(cell_eval_highlight, eval_text)
+                
                 self.play(Create(cell_eval_highlight), Write(eval_text))
                 
                 # Update the last text object for positioning the next one
@@ -455,10 +461,14 @@ class AnimationHelpers:
             reason_text = None
             if sorted_candidates[0]['possible_alloc'] > sorted_candidates[1]['possible_alloc']:
                 reason_text = Tex("Choosing the one with the largest possible allocation.", color=BLUE).scale(0.7)
+                reason_text_str = "Choosing the one with the largest possible allocation."
+
             else:
                 reason_text = Tex("Allocation also tied. Choosing the one with the minimum cost.", color=BLUE).scale(0.7)
+                reason_text_str = "Allocation also tied. Choosing the one with the minimum cost."
             reason_text.next_to(tie_text, DOWN)
-            self.play(Write(reason_text))
+            with self.narration(speech_service_id="en", text = reason_text_str) as narration:
+                self.play(Write(reason_text))
             self.wait(2)
             self.play(FadeOut(tie_text), FadeOut(reason_text))
 
@@ -490,12 +500,15 @@ class AnimationHelpers:
             row_cells = VGroup(*table.get_rows()[index + 1][1:-1])
             self.play(Indicate(row_cells, color=BLUE))
             explanation_2 = Tex(f"Select row {index+1}. Find the minimum cost cell.", color=BLUE).scale(0.7).next_to(explanation, DOWN)
+            explanation_2_str = f"Select row {index+1}. Find the minimum cost cell."
         else: # 'col'
             col_cells = VGroup(*table.get_columns()[index + 1][1:-1])
             self.play(Indicate(col_cells, color=BLUE))
             explanation_2 = Tex(f"Select column {index+1}. Find the minimum cost cell.", color=BLUE).scale(0.7).next_to(explanation, DOWN)
+            explanation_2_str = f"Select column {index+1}. Find the minimum cost cell."
         
-        self.play(Write(explanation_2))
+        with self.narration(speech_service_id="en", text = explanation_2_str) as narration:
+            self.play(Write(explanation_2))
         cell_to_allocate = table.get_cell((alloc_i + 2, alloc_j + 2))
         cell_highlight = SurroundingRectangle(cell_to_allocate, color=GREEN)
         self.play(Create(cell_highlight))
@@ -508,7 +521,8 @@ class AnimationHelpers:
         alloc_text.move_to(cell_to_allocate.get_center() + UL*0.1)
         
         explanation_3 = Tex(f"Allocate: min(Supply[{supply_left[alloc_i]}], Demand[{demand_left[alloc_j]}]) = {quantity}", color=GREEN).scale(0.7).next_to(explanation_2, DOWN)
-        self.play(Write(explanation_3))
+        with self.narration(speech_service_id="en", text = f"No. of Allocation is equal to the minimum of Supply and demand. Therefore, Allocate {quantity}.") as narration:
+            self.play(Write(explanation_3))
         self.play(Write(alloc_text))
         self.wait(1)
 
@@ -522,7 +536,8 @@ class AnimationHelpers:
         new_supply_mob = Integer(new_supply).move_to(supply_mob)
         new_demand_mob = Integer(new_demand).move_to(demand_mob)
 
-        self.play(Transform(supply_mob, new_supply_mob), Transform(demand_mob, new_demand_mob))
+        with self.narration(speech_service_id="en", text = "Update Demand and supply by subtracting number of allocation") as narration:
+            self.play(Transform(supply_mob, new_supply_mob), Transform(demand_mob, new_demand_mob))
         supply_left[alloc_i] = new_supply
         demand_left[alloc_j] = new_demand
         self.wait(1)
@@ -532,14 +547,16 @@ class AnimationHelpers:
             satisfied_rows.add(alloc_i)
             row_to_fade = VGroup(*table.get_rows()[alloc_i+1][1:])
             row_line = table.get_horizontal_lines()[alloc_i + 1].copy().set_stroke(RED, 3).move_to(row_to_fade.get_center())
-            self.play(Create(row_line))
+            with self.narration(speech_service_id="en", text = f"Creating a horizontal line where supply becomes zero") as narration:
+                self.play(Create(row_line))
         if demand_left[alloc_j] == 0:
             satisfied_cols.add(alloc_j)
             col_to_fade = VGroup(*table.get_columns()[alloc_j+1][1:])
             col_line = table.get_vertical_lines()[alloc_j + 1].copy().set_stroke(RED, 3).move_to(col_to_fade.get_center())
-            self.play(Create(col_line))
+            with self.narration(speech_service_id="en", text = f"Creating a vertical line where demand becomes zero") as narration:
+                self.play(Create(col_line))
         
-        self.wait(1)
+        self.wait(0.5)
 
         # 8. Cleanup
         self.play(
@@ -549,9 +566,7 @@ class AnimationHelpers:
             FadeOut(explanation_2),
             FadeOut(explanation_3),
             FadeOut(VGroup(*row_penalty_texts)),
-            FadeOut(VGroup(*col_penalty_texts)),
-            FadeOut(row_line),
-            FadeOut(col_line)
+            FadeOut(VGroup(*col_penalty_texts))
         )
         return alloc_i, alloc_j, quantity, alloc_text
     
@@ -568,7 +583,8 @@ class AnimationHelpers:
         Animates the final cost calculation based on the allocations made.
         """
         final_header = Tex("Final Step: Calculate Total Cost", color=GREEN).scale(0.8).to_edge(UP, buff=1)
-        self.play(Write(final_header))
+        with self.narration(speech_service_id="en", text = f"Initial Total Cost") as narration:
+            self.play(Write(final_header), run_time=narration.duration)
         self.wait(1)
         
         total_cost = 0
@@ -587,11 +603,6 @@ class AnimationHelpers:
             cost = costs[i][j]
             total_cost += quantity * cost
             
-            # Highlight the cell
-            cell = table.get_cell((i + 2, j + 2)) # +2 for labels
-            highlight = SurroundingRectangle(cell, color=YELLOW, buff=-0.1)
-            self.play(Create(highlight))
-            
             # Create and display the calculation line
             line_text = Tex("+", f" ({quantity}", r" units \\times ", f"{cost})", font_size=24)
             if st == 1: # First item
@@ -599,20 +610,17 @@ class AnimationHelpers:
 
             line_text.to_edge(RIGHT, buff=0.75)
             
-            self.play(Write(line_text))
-            calc_lines.add(line_text)
-            self.play(FadeOut(highlight))
-            self.wait(0.5)
+            cost_calc_lines = VGroup()
+            cost_calc_lines.add(line_text)
+            cost_calc_lines.arrange(DOWN, buff=0.75).next_to(title, DOWN)
+        self.play(Write(cost_calc_lines))    
 
         # Display the final total
-        separator = Line(LEFT, RIGHT).set_width(3).next_to(calc_lines, DOWN, buff=0.2)
-        final_cost_text = Tex(f"= {total_cost}", font_size=28, color=YELLOW)
+        separator = Line(LEFT, RIGHT).set_width(3).next_to(cost_calc_lines, DOWN, buff=0.2)
+        final_cost_text = Tex(f"= {total_cost}", font_size=28, color=YELLOW).shift(LEFT*5.5)
+        final_cost_text_str = f"Initial Feasible Solution is equal to {total_cost}"
         final_cost_text.next_to(separator, DOWN, buff=0.2).align_to(calc_lines, LEFT)
 
         self.play(Create(separator))
-        self.play(Write(final_cost_text))
-    # def animate_degeneracy_check():
-    #     """
-    #     Animates the step of checking if solution is degenerate
-    #     m+n-1 = No. of Allocation
-    #     """
+        with self.narration(speech_service_id="en", text = final_cost_text_str) as narration:
+            self.play(Write(final_cost_text), run_time=narration.duration)

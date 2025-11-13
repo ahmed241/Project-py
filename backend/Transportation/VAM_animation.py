@@ -1,40 +1,49 @@
 from manim import *
 from VAM_helper_funcs import AnimationHelpers
+from manim_narration import NarrationScene
+from manim_narration import config as narration_config
+from manim_narration.speech import KokoroService
 import json
 import copy
 import os
 
-class TransportationScene(Scene):
+narration_config.skip_narrations = True
+class VAMTransportation(NarrationScene):
     def construct(self):
+        self.set_speech_services(
+            en=KokoroService(voice="af_jessica", lang_code="en-us")
+        )
         # Build a reliable path to the JSON file
-        # script_dir = os.path.dirname(__file__)
-        # json_path = os.path.join(script_dir, "transportation_problem.json")
-        
-        # with open(json_path, "r") as f:
-        #     data = json.load(f)
-            # supply = data["supply"]
-            # demand = data["demand"]
-            # costs = data["costs"]
-        costs = [
-                        [19, 30, 50, 10],
-                        [70, 30, 40, 60],
-                        [40, 8, 70, 20]
-                    ]
-        demand = [5, 8, 7, 14]
-        supply = [7, 9, 18]
-  
+        script_dir = os.path.dirname(__file__)
+        json_path = os.path.join(script_dir, "transportation_problem.json")
+        with open(json_path, "r") as f:  
+            data = json.load(f)
+            supply = data["supply"]
+            demand = data["demand"]
+            costs = data["costs"]
+        # costs = [
+        #                 [19, 30, 50, 10],
+        #                 [70, 30, 40, 60],
+        #                 [40, 8, 70, 20]
+        #             ]
+        # demand = [5, 8, 7, 14]
+        # supply = [7, 9, 18]
         Header = Tex("Transportation Problem\\\\Vogel's Approximation Method", font_size=48).to_edge(UP, buff=0.1)
-        self.play(Write(Header))
+        with self.narration(speech_service_id="en", text = "Initial solution using vogels approximation method") as narration:
+            self.play(Write(Header), run_time=narration.duration)
         self.wait(0.75)
         self.play(Header.animate.scale(0.75))
-        
         full_table = AnimationHelpers.create_transportation_table(
             self, costs, supply, demand
         )
         table = full_table
+        # Animate creation
+        self.play(FadeIn(table))
+        self.play(table.animate.shift(DOWN*0.25))
+        self.wait(1)
         
         # This will return a new table and balanced data if changes were made
-        balanced_table, balanced_costs, balanced_supply, balanced_demand = AnimationHelpers.animate_balance_problem(self, table, costs, supply, demand)
+        balanced_table, balanced_costs, supply, demand = AnimationHelpers.animate_balance_problem(self, table, costs, supply, demand)
 
         # From this point on, use the BALANCED variables for everything
         row_penalty_lines, col_penalty_lines = AnimationHelpers.animate_extend_for_penalties(
@@ -68,11 +77,10 @@ class TransportationScene(Scene):
             # Combine penalties
             all_penalties = row_penalties + col_penalties
             
-            # --- THIS IS THE NEWLY ADDED PART ---
             # Step 3: Perform allocation based on penalties
             alloc_i, alloc_j, quantity, new_alloc_mob = AnimationHelpers.animate_allocation_step(
                 self, balanced_table, all_penalties, row_penalty_texts, col_penalty_texts,
-                current_supply, current_demand, satisfied_rows, satisfied_cols, balanced_costs
+                current_supply, current_demand, satisfied_rows,  satisfied_cols, balanced_costs
             )
             
             # Store the result
@@ -82,9 +90,10 @@ class TransportationScene(Scene):
             self.play(FadeOut(iteration_text))
             self.wait(0.5)
         
+        AnimationHelpers.animate_removing_extend_for_penalties(self, row_penalty_lines, col_penalty_lines)
         # --- FINAL STEP ---
         # Step 4: Calculate the total cost from allocations
         AnimationHelpers.animate_total_cost_calculation(
-            self, table, costs, allocations
+            self, table, balanced_costs, allocations
         )
         self.wait(2)

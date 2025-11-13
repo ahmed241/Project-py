@@ -225,31 +225,36 @@ def _find_min_cost_cell(costs, line_type, index, available_rows, available_cols)
                 
     return best_cell
 
-def solve_vam(supply, demand, costs, problem_type="minimisation"):
+def solve_vam(supply, demand, costs, problem_type="min"):
     """
     Solves the Transportation Problem using Vogel's Approximation Method (VAM)
     with advanced tie-breaking.
     
-    Handles both 'minimisation' and 'maximisation' problem types.
+    Handles both 'min' and 'max' problem types.
     """
     
     # We MUST store the original costs to calculate the final
     # cost/profit correctly.
     original_costs = [list(row) for row in costs]
     
-    if problem_type == "maximisation":
+    if problem_type == "max":
         print("Maximisation problem detected. Converting to minimisation...")
         # We use the converted 'costs' matrix for all VAM logic
-        costs = max_to_min(costs)
+        converted_costs = max_to_min(costs)
         print("Converted costs (regret matrix):")
-        for row in costs:
+        for row in converted_costs:
             print(f"  {row}")
+    else:
+        # --- ADD THIS LINE ---
+        # If it's a min problem, the converted_costs are just the original costs
+        converted_costs = [list(row) for row in costs]
+            
     
     # --- Integration End ---
 
     # 1. Balance the problem
     # This uses the (potentially converted) 'costs' matrix
-    current_supply, current_demand, costs, _ = balance_problem(supply, demand, costs)
+    current_supply, current_demand, costs_to_solve, _ = balance_problem(supply, demand, converted_costs)
     updated_supply = current_supply.copy()
     updated_demand = current_demand.copy()
     
@@ -261,6 +266,11 @@ def solve_vam(supply, demand, costs, problem_type="minimisation"):
     if len(current_demand) > len(original_costs[0]): # Dummy col added
         for row in original_costs:
             row.append(0)
+            
+    # --- ADD THIS (for MODI) ---
+    # We must also balance the 'converted_costs' matrix that we will pass to MODI
+    # (The 'costs_to_solve' variable is the balanced converted matrix)
+    # ---
 
     num_rows = len(current_supply)
     num_cols = len(current_demand)
@@ -278,15 +288,17 @@ def solve_vam(supply, demand, costs, problem_type="minimisation"):
     step = 1
     while total_supply_left > 0:
         
-        # 3a. Calculate penalties (using converted costs)
-        row_pen, col_pen = _calculate_penalties(costs, available_rows, available_cols)
+        # 3a. Calculate penalties (using balanced converted costs)
+        row_pen, col_pen = _calculate_penalties(costs_to_solve, available_rows, available_cols)
+        print("done penalty")
         
-        # 3b. Find best cell (using converted costs)
+        # 3b. Find best cell (using balanced converted costs)
         (r, c), allocation_amount = _find_best_allocation_candidate(
-            costs, current_supply, current_demand, 
+            costs_to_solve, current_supply, current_demand, 
             row_pen, col_pen, 
             available_rows, available_cols
         )
+        print("done allocation")
         
         # 3c. Check if we're done
         if (r, c) == None:
@@ -317,20 +329,22 @@ def solve_vam(supply, demand, costs, problem_type="minimisation"):
             available_cols[c] = False
             
         step += 1
-    return allocations, total_cost, original_costs, updated_demand, updated_supply
+        
+    # --- CHANGE THIS RETURN STATEMENT ---
+    return allocations, total_cost, original_costs, costs_to_solve, updated_demand, updated_supply
 
 # --- How to Use It ---
 
 # Your input data from the file
-costs = [
-                [40, 25, 22, 33],
-                [44, 35, 30, 30],
-                [38, 38, 28, 30]
-            ]
-demand = [40, 20, 60, 30]
-supply = [100, 30, 70]
-
 # costs = [
+#                 [19, 30, 50, 10],
+#                 [70, 30, 40, 60],
+#                 [40, 8, 70, 20]
+#             ]
+# demand = [5, 8, 7, 14]
+# supply = [7, 9, 18]
+
+# # costs = [
 #         [8, 7, 3],
 #         [3, 8, 9],
 #         [11, 3, 5]
@@ -339,8 +353,9 @@ supply = [100, 30, 70]
 # supply = [60, 70, 80]
 
 # # 1. Get the initial solution using VAM
-initial_allocation, initial_cost, update_costs, update_demad, update_supply = solve_vam(supply, demand, costs)
-print(initial_allocation)
-print(update_costs)
-print(update_demad)
-print(update_supply)
+# initial_allocation, initial_cost, update_costs, update_demad, update_supply = solve_vam(supply, demand, costs)
+# print(initial_allocation)
+# print(update_costs)
+# print(update_demad)
+# print(update_supply)
+# print(initial_cost)

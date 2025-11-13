@@ -1,7 +1,6 @@
 from manim import *
 from manim_narration import NarrationScene
-from manim_narration.alignment import CTCAligner, InterpolationAligner
-from manim_narration.speech import GTTSService
+from manim_narration.speech import KokoroService
 from MODI_helper_funcs import AnimationHelpers
 from VAM_solver import solve_vam
 from MODI_solver import adjust_allocations # <-- Import the logic function
@@ -11,6 +10,7 @@ import os
 class MODI_Transportation(NarrationScene):
     def construct(self):
         self.set_speech_services(
+            en=KokoroService(voice="af_jessica", lang_code="en-us")
         )
         # --- 0. Setup ---
         # Load data from JSON
@@ -24,17 +24,15 @@ class MODI_Transportation(NarrationScene):
             
         # --- 1. Get Initial VAM Solution ---
         # This is the pure logic step
-        initial_allocation, initial_costs, update_costs, update_demand, update_supply = solve_vam(supply, demand, costs)
+        initial_allocation, initial_cost, update_costs, costs_to_solve, update_demand, update_supply = solve_vam(supply, demand, costs)
 
         # --- 2. Animate Scene Titles ---
         Header = Tex("Transportation Problem\\\\Modified Distribution Method (MODI)", font_size=48)
-        with self.narration(text="Transportation solution using Modified Distribution Method") as narration:
-            self.play(Write(Header), run_time=narration.duration)
+        self.play(Write(Header))
         self.wait(0.75)
-        self.play(Header.animate.scale(0.75).to_edge(UP, buff=0.25))
-        self.next_section(skip_animations=True)
-        
         vam_title = Tex("Initial Solution using Vogel's Approximation Method")
+        self.play(Header.animate.scale(0.75).to_edge(UP, buff=0.25))
+        
         self.play(Write(vam_title))
         self.wait(0.25)
         self.play(vam_title.animate.scale(0.75).next_to(Header, DOWN, buff=0.1).set_color(LIGHT_PINK))
@@ -48,14 +46,14 @@ class MODI_Transportation(NarrationScene):
             table_alloc # This VGroup holds the table + allocs
         ) = helpers.create_table_with_allocations(
             self,
-            update_costs, 
+            costs_to_solve, 
             update_supply, 
             update_demand, 
             initial_allocation,
             Header
         )
-        self.play(FadeOut(vam_title)) # Fade VAM title
-        
+        with self.narration(speech_service_id="en", text = "Final Optimal Solution using Modified Distribution Method") as narration:
+            self.play(FadeOut(vam_title)) # Fade VAM title
         # --- 4. Extend Table (One-Time Setup) ---
         # This shifts the table to its final position
         (
@@ -65,7 +63,7 @@ class MODI_Transportation(NarrationScene):
             self,
             table,
             table_alloc, 
-            update_costs
+            costs_to_solve
         )
 
         # --- 5. START MODI ITERATION LOOP ---
@@ -80,10 +78,9 @@ class MODI_Transportation(NarrationScene):
                 self,
                 table,
                 alloc_mobject_map,
-                update_costs,
+                costs_to_solve,
                 Header
-            )
-            
+            ) 
             epsilon_mob = None # Clear epsilon tracker each loop
             
             # --- 5b. Handle Degeneracy ---
@@ -95,7 +92,7 @@ class MODI_Transportation(NarrationScene):
                 ) = helpers.handle_degeneracy(
                     self,
                     table,
-                    update_costs,
+                    costs_to_solve,
                     initial_allocation,
                     alloc_mobject_map,
                     Header
@@ -110,7 +107,7 @@ class MODI_Transportation(NarrationScene):
             ) = helpers.animate_uv_calculation(
                 self,
                 table,
-                update_costs,
+                costs_to_solve,
                 initial_allocation,
                 alloc_mobject_map,
                 row_lines,
@@ -128,7 +125,7 @@ class MODI_Transportation(NarrationScene):
             ) = helpers.calculate_opportunity_costs( # This is your function
                 self,
                 table,
-                update_costs,
+                costs_to_solve,
                 initial_allocation, # This is the logic matrix
                 u_vals,
                 v_vals,
@@ -145,7 +142,7 @@ class MODI_Transportation(NarrationScene):
                 entering_cell_coords,
                 entering_cell_mobject
             )
-            
+
             self.wait(1)
 
             # --- 5f. Decide Next Step ---
@@ -167,7 +164,7 @@ class MODI_Transportation(NarrationScene):
                     entering_cell_coords, # The (r, c) tuple
                     Header
                 )
-                
+
                 # --- 5h. Get New Logic (No animation) ---
                 # We need the *results* of the adjustment
                 # to feed into the table_update function.
@@ -177,7 +174,7 @@ class MODI_Transportation(NarrationScene):
                     plus_cells, 
                     minus_cells
                 ) = adjust_allocations(initial_allocation, loop_path)
-                
+
                 # --- 5i. Update Table Visuals ---
                 (
                     new_table,
@@ -192,7 +189,6 @@ class MODI_Transportation(NarrationScene):
                     new_allocations_logic # The new logic
                 )
 
-                
                 # --- 5j. Update State for Next Iteration ---
                 initial_allocation = new_allocations_logic
                 alloc_mobject_map = new_alloc_map_updated
