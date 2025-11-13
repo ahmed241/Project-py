@@ -1,30 +1,58 @@
+Absolutely — here is your **updated README in the SAME format**, but rewritten to match your **current system**:
+
+* **Replaced Streamlit with Next.js**
+* Updated architecture
+* Added **SFD/BMD solver**
+* Added **Laplace solver**
+* Mentioned animation pipeline status
+* Updated tech stack badges
+* Streamlined for competition submission
+
+---
+
 # 🎓 Engineering Solver Suite
 
-A comprehensive web-based platform for solving complex engineering problems, built entirely in Python with a Streamlit frontend and a FastAPI backend for heavy computation and video rendering.
+A comprehensive web-based platform for solving complex engineering and mathematical problems using symbolic computation and animated explanations.
 
-![Streamlit](https://img.shields.io/badge/Streamlit-1.33-ff69b4)
+Frontend now uses **Next.js**, backend uses **FastAPI**, and all solvers + animations are powered by Python.
+
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110-teal)
 ![Python](https://img.shields.io/badge/Python-3.10+-green)
 ![Manim](https://img.shields.io/badge/Manim-0.18-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-20-blue)
 
+---
+
 ## 🌟 Overview
 
-Engineering Solver Suite is an all-in-one educational platform designed to help students and engineers tackle complex problems. Each solver provides not just answers but **visual explanations** and **step-by-step animated breakdowns** of the solution process, powered by a robust Python backend.
+Engineering Solver Suite is an educational platform that generates **step-by-step solutions** and **Manim-powered animated explanations** for complex engineering subjects.
+
+The platform aims to make engineering concepts interactive, visual, and easy to understand—automatically.
 
 ---
 
 ## 🏗️ Architecture
 
-This project uses a modern decoupled architecture to handle long-running tasks like video rendering without timeouts, using a pure Python stack.
+Our system uses a **modern decoupled architecture**:
 
-1.  **Frontend (Streamlit)**: The user interacts with the Streamlit app, enters their data, and clicks "Render Video."
-2.  **API Request**: The frontend sends a request to a `/api/start-...` endpoint on the FastAPI backend.
-3.  **Backend (FastAPI)**: The backend immediately accepts the request, creates a unique **Job ID**, and starts the Manim rendering process as a **background task**. It instantly returns the Job ID to the frontend.
-4.  **Polling**: The Streamlit app then repeatedly calls a `/api/status/{job_id}` endpoint every few seconds to check the job's status.
-5.  **Result**: Once the backend finishes rendering, it updates the job's status. The frontend sees the "completed" status, gets the final video URL, and displays it to the user.
+1. **Frontend (Next.js)**
+   Users enter equations, view step-by-step solutions, and watch generated animations.
 
+2. **API Request**
+   Next.js sends data to FastAPI endpoints such as `/solve-laplace`, `/solve-sfd-bmd`, etc.
 
+3. **Backend (FastAPI)**
+   Receives request → calls Python solver → generates step-by-step result and animation-ready LaTeX.
+
+4. **Solver Engine (Python + SymPy)**
+   Modular solvers designed for symbolic math, engineering formulas, structural analysis, and animations.
+
+5. **Animation Engine (Manim)**
+   Converts solver steps into smooth, high-quality math animations (work in progress).
+
+6. **Storage & Delivery**
+   Future support: Task queue for rendering, CDN for video output.
 
 ---
 
@@ -32,33 +60,66 @@ This project uses a modern decoupled architecture to handle long-running tasks l
 
 ### ✅ Implemented Solutions
 
-#### 1. 🏗️ **Mechanical Design - EOT Crane**
-- **Problem**: Design the hoisting mechanism for an Electric Overhead Traveling (EOT) crane.
-- **Features**: Wire rope selection, pulley optimization, and animated design process using Manim.
-- **Input**: Load (tonnes/kN), Speed (m/min or m/s), Lift height.
-- **Output**: Complete design specifications or an animated explanation.
+---
 
-#### 2. 🎯 **Operations Research - Assignment Problem**
-- **Problem**: Find the optimal minimum-cost assignment using the Hungarian Algorithm.
-- **Features**: Step-by-step matrix reduction and a visual representation of the final assignments.
-- **Input**: N×N cost matrix.
-- **Output**: Optimal assignment pairs with minimum total cost.
+### 1. 📐 **Structural Analysis — SFD/BMD Solver**
 
-#### 3. 🚚 **Operations Research - Transportation Problem**
-- **Problem**: Find the optimal distribution plan from sources to destinations.
-- **Features**: Vogel's Approximation Method, supply-demand balancing, and route visualization.
-- **Input**: Supply array, Demand array, Cost matrix.
-- **Output**: Optimal transportation plan with minimum cost.
+* Compute reactions, shear forces, bending moments
+* Supports distributed loads, point loads, supports
+* Step-by-step JSON output
+* **Animations in progress** (beam + diagrams)
+
+---
+
+### 2. 🔁 **Laplace Transform Solver (Beta)**
+
+* Parses LaTeX → SymPy
+* Supports base rules:
+
+  * ( e^{at} ), ( t^n ), ( \sin(bt) ), ( \cos(bt) )
+* Applies properties:
+
+  * Linearity
+  * Exponential shift
+* Step-by-step rule application
+* Produces LaTeX equations for Manim animations
+* **Limited variety** but functional for common engineering problems
+
+---
+
+### 3. 🏗️ **Mechanical Design — EOT Crane**
+
+* Wire rope selection
+* Pulley calculations
+* Load handling design
+* Manim animations for explanation steps
+
+---
+
+### 4. 🎯 **Operations Research — Assignment Problem**
+
+* Hungarian Algorithm
+* Step-by-step matrix reduction
+* Visual explanation
+
+---
+
+### 5. 🚚 **Operations Research — Transportation Problem**
+
+* Vogel’s Approximation Method
+* Balanced/unbalanced problems
+* Stepwise visual reasoning
 
 ---
 
 ## ✨ Key Features
 
-- 🎬 **Asynchronous Video Rendering** - No more timeouts! Jobs run in the background.
-- 📊 **Interactive Inputs** - User-friendly Streamlit widgets with real-time updates.
-- 📱 **Mobile Friendly** - Responsive design that works on all devices.
-- 📈 **Real Engineering Data** - Uses standard reference tables from the PSG Design Data Book.
-- 🧮 **Accurate Calculations** - Implements industry-standard algorithms and methods.
+* 🎬 Step-by-step animations (Manim-based)
+* 🔍 Transparent reasoning engine (JSON output)
+* 💻 Modern web interface (Next.js)
+* 🧠 Symbolic math engine (SymPy + custom rules)
+* 📊 Engineering-grade accuracy
+* 🧩 Modular solver architecture
 
 ---
 
@@ -66,110 +127,174 @@ This project uses a modern decoupled architecture to handle long-running tasks l
 
 ### Prerequisites
 
-- **Python** 3.10+ and pip
-- **Docker** and Docker Compose
-- **Git**
+* Node.js 18+
+* Python 3.10+
+* Docker (for backend environment)
+* Git
 
-### Installation & Running
+---
 
+### **1. Clone the repository**
 
-# 1. Clone the repository
-git clone [https://github.com/ahmed241/Project-py](https://github.com/ahmed241/Project-py.git)
+```bash
+git clone https://github.com/ahmed241/Project-py
 cd engineering-solver-suite
+```
 
-# 2. Run the Python Backend (using Docker)
-# This builds the container with Manim, LaTeX, and all dependencies.
-# This command might take a while the first time.
+---
+
+### **2. Install & Run the Backend (FastAPI)**
+
+```bash
 cd backend
 docker-compose up --build
-# The backend will now be running on http://localhost:7000
+```
 
-# 3. In a NEW terminal, install frontend dependencies and run the Streamlit app
-cd .. # Go back to the root directory
-pip install -r requirements.txt
-streamlit run Home.py
-# The frontend will now be running on http://localhost:8501
-🏗️ Project Structure
+Backend runs at:
+
+```
+http://localhost:7000
+```
+
+---
+
+### **3. Install & Run the Frontend (Next.js)**
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at:
+
+```
+http://localhost:3000
+```
+
+---
+
+# 🏗️ Project Structure
+
+```
 engineering-solver-suite/
-├── Home.py                       # Main Streamlit homepage
-├── requirements.txt              # Frontend (Streamlit) Python dependencies
-├── pages/
-│   ├── 1_Transportation.py       # Transportation solver page
-│   ├── 2_Assignment.py           # Assignment solver page
-│   └── 3_EOT_Crane.py            # EOT Crane solver page
-└── backend/
-    ├── main.py                   # FastAPI app with all API endpoints
-    ├── requirements.txt          # Backend Python dependencies
-    ├── Dockerfile                # Docker instructions for backend server
-    ├── docker-compose.yml        # Easy local startup for the backend
-    ├── public/
-    │   └── videos/               # Stores generated videos
-    └── backend/
-        ├── Transportation/
-        │   ├── animation.py
-        │   └── VAM_solver.py
-        ├── Assignment/
-        │   └── ...
-        └── EOT_Crane/
-            ├── animation.py
-            └── EOT_solver.py
-🎯 Technology Stack
-Frontend
-Framework: Streamlit
+│
+├── frontend/                # Next.js UI
+│   ├── components/
+│   ├── pages/
+│   └── public/
+│
+├── backend/                 # FastAPI service
+│   ├── main.py
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── requirements.txt
+│   └── solvers/
+│       ├── laplace/
+│       │   ├── laplace_solver.py
+│       │   └── laplace_rules.py
+│       ├── sfd_bmd/
+│       │   └── solver.py
+│       ├── assignment/
+│       └── transportation/
+│
+└── animation_engine/        # Manim animation modules
+    ├── scenes/
+    └── utils/
+```
 
-Language: Python
+---
 
-Backend
-Framework: FastAPI
+# 🎯 Technology Stack
 
-Language: Python
+### **Frontend**
 
-Animation: Manim
+* Next.js
+* React
+* TailwindCSS
+* MathLive (LaTeX input)
 
-Computation: NumPy, SciPy
+### **Backend**
 
-Deployment: Docker
+* FastAPI
+* Pydantic
+* SymPy (symbolic math)
+* NumPy, SciPy
+* Manim (animation)
 
-🐛 Troubleshooting
-Connection Refused Error in Streamlit:
+### **Infrastructure**
 
-Make sure your backend Docker container is running. Use docker ps to check.
+* Docker
+* (Planned) Celery Workers
+* (Planned) S3 Storage / CDN
 
-Verify the BACKEND_URL variable in your Streamlit .py files is correct (e.g., http://localhost:7000 for local development).
+---
 
-403 Forbidden Error on Deployed App:
+# 🐛 Troubleshooting
 
-This is a CORS error. Go to backend/main.py, find the origins list, and add the exact URL of your deployed Streamlit app (e.g., https://your-app-name.streamlit.app).
+### ❌ 404/500 Errors (Frontend → Backend)
 
-Videos Not Generating:
+Ensure backend is running at `http://localhost:7000`
+And the frontend `.env.local` has:
 
-Check the logs from your Docker container for any Manim errors.
+```
+NEXT_PUBLIC_BACKEND_URL=http://localhost:7000
+```
 
-Ensure the public/videos directory exists within your backend structure.
+### ❌ Animation not generating
 
-🚀 Deployment
-This project requires deploying the frontend and backend separately.
+Check backend logs:
 
-1. Backend (Python/FastAPI)
-Recommended Service: Render.
+```
+docker logs <container-name>
+```
 
-Method: Connect your GitHub repository. Render will automatically detect the Dockerfile and build your containerized backend.
+### ❌ LaTeX parse failures
 
-Result: You will get a public URL like https://your-backend.onrender.com.
+Ensure expressions are passed as raw strings:
 
-2. Frontend (Python/Streamlit)
-Recommended Service: Streamlit Community Cloud.
+```
+r"e^{2t} + \sin(3t)"
+```
 
-Method: Connect your GitHub repository and point it to your app's main file (Home.py).
+---
 
-Crucial Step: You must set a Secret in your Streamlit app's settings. The secret key should be BACKEND_URL and its value should be the public URL of your deployed backend (e.g., https://your-backend.onrender.com). Your Streamlit code should read this secret to communicate with the backend.
+# 🚀 Deployment
 
-🤝 Contributing
-We welcome contributions! Please fork the repository, create a feature branch, and open a pull request.
+### Backend (FastAPI)
+
+Deploy using:
+
+* Render
+* Railway
+* Docker-based VPS
+
+### Frontend (Next.js)
+
+Deploy using:
+
+* Vercel (recommended)
+* Netlify
+
+Set environment variable:
+
+```
+NEXT_PUBLIC_BACKEND_URL = <your backend URL>
+```
+
+---
+
+# 🤝 Contributing
+
+Pull requests welcome!
+Feel free to submit improvements to solvers, animations, UI, or documentation.
+
+---
 
 <div align="center">
 
-🌟 If this project helped you, please give it a star! ⭐
-Made with ❤️ for the engineering community
+⭐ If this project inspires you, please give it a star!
+Built with ❤️ for the engineering community.
 
 </div>
+
