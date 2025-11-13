@@ -7,7 +7,6 @@ import json
 import copy
 import os
 
-narration_config.skip_narrations = True
 class VAMTransportation(NarrationScene):
     def construct(self):
         self.set_speech_services(

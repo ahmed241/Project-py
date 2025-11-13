@@ -106,10 +106,19 @@ def run_script_in_background(job_id: str, command: list, output_file_json: str):
                 final_payload = {"status": "complete", "pdfUrl": public_path_base_url + ".pdf"}
             elif os.path.exists(output_file_json):
                 with open(output_file_json, 'r', encoding='utf-8') as f:
-                    final_payload = json.load(f)
+                    solution_data = json.load(f)
+                
+                # --- FIX ---
+                # Match the frontend's expectation: {status: 'success', solution: {...}}
+                # Note: We also check if the script wrote an error payload.
+                if solution_data.get("status") == "error":
+                    final_payload = solution_data
+                else:
+                    final_payload = {"status": "success", "solution": solution_data}
+                # --- END FIX ---       
             else:
                 final_payload = {"status": "error", "message": "Script ran but no output file was found."}
-            
+
     except Exception as e:
         print(f"CRITICAL: Job {job_id} failed in worker: {str(e)}")
         final_payload = {"status": "error", "message": str(e)}
@@ -255,18 +264,20 @@ async def get_status(job_id: str):
                 result = json.load(f)
             
             # Clean up the status file
-            os.remove(status_file)
-            
-            # Also clean up the main .json file if it exists
-            # (which it should, for direct/error)
-            main_json = status_file.replace("_status.json", ".json")
-            if os.path.exists(main_json):
-                os.remove(main_json)
+            # --- START FIX: Only delete the temporary input file ---
             
             # Clean up the temp input file
             input_file = os.path.join(algo_viz_dir, 'temp', f"{job_id}.json")
             if os.path.exists(input_file):
+                print(f"Cleaning up input file: {input_file}")
                 os.remove(input_file)
+            
+            # We will no longer delete the status or output files.
+            # This allows you to inspect the job_id.mp4, job_id.json, 
+            # and job_id_status.json files in /public/outputs/
+            print(f"Job {job_id} complete. Output files preserved in /public/outputs/ for review.")
+            
+            # --- END FIX ---
 
             return result
         except Exception as e:

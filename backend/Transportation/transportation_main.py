@@ -12,14 +12,15 @@ from MODI_solver import solve_MODI, calculate_final_cost, check_degeneracy, find
 
 # --- Manim Helper Functions ---
 
+# In transportation_main.py
+
 def _run_manim_scene(script_name, scene_name, cwd_dir):
     """
     Runs a specific Manim scene and handles errors.
     """
     animation_script_path = os.path.join(cwd_dir, script_name)
     
-    # Command: manim -pql <script_name> <scene_name>
-    # -q (quality) l (low).
+    # Command: manim -q (quality) l (low).
     manim_command = ["manim", "-ql", animation_script_path, scene_name, "--disable_caching"]
     
     print(f"Running command: {' '.join(manim_command)}")
@@ -38,17 +39,44 @@ def _run_manim_scene(script_name, scene_name, cwd_dir):
     # --- Find Rendered File ---
     script_name_no_ext = os.path.splitext(script_name)[0]
     
-    # Manim saves to: media/videos/<script_name_no_ext>/<quality>/<scene_name>.mp4
-    rendered_file_path = os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "480p15", f"{scene_name}.mp4")
-
-    if not os.path.exists(rendered_file_path):
-        # Fallback for 720p
-        print(f"Warning: Could not find 480p file. Trying 720p30...", file=sys.stderr)
-        rendered_file_path = os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "720p30", f"{scene_name}.mp4")
-        if not os.path.exists(rendered_file_path):
-            print(f"Error: Could not find rendered file at {rendered_file_path}", file=sys.stderr)
-            raise Exception("Manim rendered, but output file not found.")
-            
+    # --- START FIX: Handle Manim stripping underscores from filenames ---
+    
+    # This is the filename you saw on disk: "VAMTransportation.mp4"
+    scene_name_no_underscore = scene_name.replace("_", "") 
+    
+    # This is the filename the code was *expecting*: "VAM_Transportation.mp4"
+    # We will keep it as a fallback.
+    
+    possible_paths = [
+        # Path 1: The one you observed (no underscore)
+        os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "480p15", f"{scene_name_no_underscore}.mp4"),
+        
+        # Path 2: The original one (with underscore)
+        os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "480p15", f"{scene_name}.mp4"),
+        
+        # --- Fallbacks ---
+        os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "720p30", f"{scene_name_no_underscore}.mp4"),
+        os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "720p30", f"{scene_name}.mp4"),
+        os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "480p", f"{scene_name_no_underscore}.mp4"),
+        os.path.join(cwd_dir, "media", "videos", script_name_no_ext, "480p", f"{scene_name}.mp4"),
+    ]
+    
+    print("Searching for rendered file...")
+    
+    rendered_file_path = None
+    for path in possible_paths:
+        print(f"Checking for file at: {path}")
+        if os.path.exists(path):
+            print(f"FOUND file at: {path}")
+            rendered_file_path = path
+            break
+    
+    if rendered_file_path is None:
+        print(f"Error: Could not find rendered file after checking all paths:", file=sys.stderr)
+        for path in possible_paths:
+            print(f"- {path}", file=sys.stderr)
+        raise Exception("Manim rendered, but output file not found.")
+        
     return rendered_file_path
 
 def _stitch_videos(video_paths, output_path, cwd_dir):
@@ -181,21 +209,30 @@ def generate_direct_solution(input_data, output_file):
     # --- Use match/case for solution type ---
     match solution_type:
         case 'initial':
+            # --- FIX: Wrap solution in 'initial' key ---
             solution = {
-                'assignments': np.array(initial_allocation).tolist(),
-                'total_cost': float(initial_cost),
-                'problem_type': problem_type
+                'initial': {
+                    'assignments': np.array(initial_allocation).tolist(),
+                    'total_cost': float(initial_cost),
+                    'problem_type': problem_type
+                },
+                'final': None # Add a null 'final' key so frontend doesn't crash
             }
             
         case 'final':
             final_allocation, total_cost = solve_MODI(costs_to_solve, original_costs, initial_allocation)
+            # --- FIX: Wrap solution in 'final' key ---
             solution = {
-                'assignments': np.array(final_allocation).tolist(),
-                'total_cost': float(total_cost),
-                'problem_type': problem_type
+                'initial': None, # Add a null 'initial' key
+                'final': {
+                    'assignments': np.array(final_allocation).tolist(),
+                    'total_cost': float(total_cost),
+                    'problem_type': problem_type
+                }
             }
 
         case 'both':
+            # This case was already correct
             final_allocation, total_cost = solve_MODI(costs_to_solve, original_costs, initial_allocation)
             solution = {
                 'initial': {
@@ -219,11 +256,11 @@ def generate_direct_solution(input_data, output_file):
     
     print("Direct solution generated successfully!")
     
-    if 'initial' in solution:
+    # Update print logic to handle new structure
+    if solution.get('initial'):
          print(f"Initial Cost: {solution['initial']['total_cost']}")
+    if solution.get('final'):
          print(f"Final Cost: {solution['final']['total_cost']}")
-    else:
-        print(f"Total Cost: {solution['total_cost']}")
 
 def generate_pdf_report(input_data, output_file):
     """Generates a PDF report (placeholder)."""
@@ -234,6 +271,7 @@ def generate_pdf_report(input_data, output_file):
         f.write("PDF generation not yet implemented.")
 
 # --- Main Execution ---
+# In transportation_main.py
 
 def main():
     """Main entry point for all Transportation problem requests."""
@@ -244,6 +282,22 @@ def main():
     
     args = parser.parse_args()
     
+    # --- START FIX ---
+    # Determine the .json path that main.py's checker will look for on failure.
+    # main.py's `run_script_in_background` is *always* passed the .json path,
+    # regardless of the output type.
+    
+    output_json_path = ""
+    if args.type == 'direct':
+        # For 'direct', the output file IS the json file
+        output_json_path = args.output
+    else:
+        # For 'video' or 'pdf', the output is .mp4 or .pdf.
+        # We need to find the .json equivalent path that main.py's checker knows about.
+        base_name = os.path.splitext(args.output)[0]
+        output_json_path = base_name + ".json"
+    # --- END FIX ---
+
     try:
         # Read the user's temporary input file
         with open(args.input, 'r') as f:
@@ -252,9 +306,11 @@ def main():
         # --- Use match case for output type ---
         match args.type:
             case 'direct':
+                # This correctly writes to args.output (which is output_json_path)
                 generate_direct_solution(input_data, args.output)
             
             case 'video':
+                # This correctly writes to args.output (the .mp4 file)
                 generate_video(input_data, args.output, input_data.get('solutionType', 'both'))
                 print(f"Video process complete. Final file at: {args.output}")
 
@@ -264,11 +320,28 @@ def main():
             case _:
                 # This case is redundant thanks to argparse 'choices', but is good practice
                 print(f"Error: Unknown output type '{args.type}'", file=sys.stderr)
-                sys.exit(1)
+                # --- START FIX ---
+                # Raise an exception so our new error handler catches it
+                raise ValueError(f"Unknown output type '{args.type}'")
+                # --- END FIX ---
 
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
-        sys.exit(1)
+        
+        # --- START FIX ---
+        # Write a specific error JSON file that main.py can read
+        try:
+            error_payload = {"status": "error", "message": str(e)}
+            # Write to the json path main.py is checking for
+            with open(output_json_path, 'w', encoding='utf-8') as f:
+                json.dump(error_payload, f)
+            print(f"Wrote error payload to {output_json_path}")
+        except Exception as e_write:
+            # If we can't even write the error file, just print to stderr
+            print(f"CRITICAL: Failed to write error JSON: {e_write}", file=sys.stderr)
+        # --- END FIX ---
+            
+        sys.exit(1) # Still exit with an error code
 
 if __name__ == '__main__':
     main()
