@@ -2,12 +2,12 @@
   "name": "algo-viz",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "vercel-build": "npm run prepare && next build",
-    "dev": "next dev",
-    "start": "next start",
-    "lint": "eslint"
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "vercel-build": "next build"
+},
   "dependencies": {
     "framer-motion": "^12.23.24",
     "katex": "^0.16.25",
