@@ -1,12 +1,4 @@
-Absolutely — here is your **updated README in the SAME format**, but rewritten to match your **current system**:
 
-* **Replaced Streamlit with Next.js**
-* Updated architecture
-* Added **SFD/BMD solver**
-* Added **Laplace solver**
-* Mentioned animation pipeline status
-* Updated tech stack badges
-* Streamlined for competition submission
 
 ---
 
